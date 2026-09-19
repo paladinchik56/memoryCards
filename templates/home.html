@@ -1,0 +1,12 @@
+{% extends 'base.html' %}
+
+{% block title %}Главная{% endblock %}
+
+{% block content %}
+    <h1>Привет, Django!</h1>
+    {% if user.is_authenticated %}
+        <p>Добро пожаловать, {{ user.username }}!</p>
+    {% else %}
+        <p>Тестовая страница работает. <a href="{% url 'register' %}">Зарегистрируйтесь</a>, чтобы продолжить.</p>
+    {% endif %}
+{% endblock %}

@@ -1,0 +1,51 @@
+{% extends 'base.html' %}
+
+{% block title %}Повторение{% endblock %}
+
+{% block content %}
+    <h1>Повторение</h1>
+
+    {% if card %}
+    <div class="review-card" id="flashcard">
+          <div class="review-card-inner" id="flashcard-inner">
+              <div class="review-card-face review-card-front">
+                  <p class="face-label">Вопрос</p>
+                  <blockquote>{{ card.question }}</blockquote>
+              </div>
+              <div class="review-card-face review-card-back" id="flashcard-outer">
+                  <p class="face-label">Ответ</p>
+                  <blockquote>{{ card.answer }}</blockquote>
+              </div>
+          </div>
+    <script>
+        function turnOverCard() {
+            let card = document.getElementById("flashcard-inner");
+            card.addEventListener("click", function () {
+                card.classList.toggle('flipped');
+            })
+        }
+         turnOverCard();
+    </script>
+    </div>
+    <form method="post" action="{% url 'cards:grade' card.pk %}" id="grade-form" hidden>
+          {% csrf_token %}
+          <button type="submit" name="correct" value="1">Помню правильно</button>
+          <button type="submit" name="correct" value="0">Не помню / ошибся</button>
+    </form>
+
+    {% else %}
+        <p>Сейчас карточек для повторения нет 🎉</p>
+
+    {% endif %}
+
+    {% if has_history %}
+        <form method="post" action="{% url 'cards:undo' %}" style="margin-top: 20px;">
+            {% csrf_token %}
+            <button type="submit">← Предыдущая карточка (нажал не то)</button>
+        </form>
+    {% endif %}
+
+    <p><a href="{% url 'cards:list' %}">К списку карточек</a></p>
+
+
+{% endblock %}
