@@ -1,0 +1,16 @@
+{% extends 'base.html' %}
+
+{% block title %}Удалить карточку{% endblock %}
+
+{% block content %}
+    <h1>Удалить карточку?</h1>
+    <p><strong>Вопрос:</strong></p>
+    <blockquote>{{ card.question }}</blockquote>
+    <p><strong>Ответ:</strong></p>
+    <blockquote>{{ card.answer }}</blockquote>
+    <form method="post">
+        {% csrf_token %}
+        <button type="submit">Удалить</button>
+    </form>
+    <p><a href="{% url 'cards:list' %}">Отмена</a></p>
+{% endblock %}

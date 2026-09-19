@@ -1,0 +1,247 @@
+{% extends 'base.html' %}
+
+{% block title %}Мои карточки{% endblock %}
+
+{% block content %}
+    <style>
+        .hero { text-align: center; margin: 4px 0 28px; }
+        .hero-bubble {
+            display: inline-block;
+            position: relative;
+            background: #fff;
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 10px 18px;
+            font-size: 13px;
+            color: var(--text-muted);
+            max-width: 280px;
+            margin-bottom: 28px;
+        }
+        .hero-bubble::after {
+            content: "";
+            position: absolute;
+            left: 50%;
+            bottom: -7px;
+            width: 13px;
+            height: 13px;
+            background: #fff;
+            border-right: 1px solid var(--border);
+            border-bottom: 1px solid var(--border);
+            transform: translateX(-50%) rotate(45deg);
+        }
+        .hero-scene { position: relative; width: 100%; max-width: 320px; margin: 0 auto; }
+        .hero-scene svg { width: 100%; height: auto; display: block; }
+        .hero-sun {
+            position: absolute;
+            top: 2px;
+            right: 24px;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: #ffd452;
+            color: #7a5200;
+            font-weight: 700;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, .15);
+        }
+        .progress-ring {
+            --pct: 0%;
+            position: absolute;
+            left: 50%;
+            top: 55%;
+            transform: translate(-50%, -50%);
+            width: 62px;
+            height: 62px;
+            border-radius: 50%;
+            background: conic-gradient(var(--blue) var(--pct), #d7def5 0);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .progress-ring::before {
+            content: "";
+            position: absolute;
+            inset: 6px;
+            border-radius: 50%;
+            background: #e8f5e2;
+        }
+        .progress-ring span { position: relative; font-size: 11px; font-weight: 700; color: var(--text); }
+
+        .stats-row {
+            display: flex;
+            background: #fff;
+            border-radius: 14px;
+            box-shadow: 0 1px 3px rgba(20, 30, 60, .06);
+            margin-bottom: 8px;
+        }
+        .stat { flex: 1; text-align: center; padding: 16px 6px; position: relative; }
+        .stat + .stat::before {
+            content: "";
+            position: absolute;
+            left: 0;
+            top: 16px;
+            bottom: 16px;
+            width: 1px;
+            background: var(--border);
+        }
+        .stat-label { font-size: 10.5px; text-transform: uppercase; letter-spacing: .04em; font-weight: 700; margin-bottom: 6px; }
+        .stat-value { font-size: 26px; font-weight: 800; }
+
+        .week-caption { text-align: center; color: var(--text-muted); font-size: 12.5px; margin: 8px 0 20px; }
+
+        .btn-start {
+            display: block;
+            text-align: center;
+            text-decoration: none;
+            background: linear-gradient(90deg, var(--blue-light), var(--blue));
+            color: #fff;
+            font-weight: 700;
+            letter-spacing: .04em;
+            text-transform: uppercase;
+            padding: 16px;
+            border-radius: 999px;
+            font-size: 14px;
+            margin-bottom: 32px;
+            box-shadow: 0 8px 20px rgba(47, 143, 224, .35);
+        }
+        .btn-start:hover { opacity: .95; }
+
+        .cards-block {
+            position: relative;
+            background: #fff;
+            border-radius: 14px;
+            box-shadow: 0 1px 3px rgba(20, 30, 60, .06);
+            margin-bottom: 20px;
+        }
+        .cards-section summary {
+            list-style: none;
+            padding: 16px 56px 16px 16px;
+            cursor: pointer;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .cards-section summary::-webkit-details-marker { display: none; }
+        .cards-section summary::before { content: "▾"; color: var(--text-muted); display: inline-block; transition: transform .15s; }
+        .cards-section:not([open]) summary::before { transform: rotate(-90deg); }
+        .cards-table-wrap { padding: 0 16px 16px; overflow-x: auto; }
+        .plus-btn {
+            position: absolute;
+            top: 10px;
+            right: 12px;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            border: none;
+            background: var(--bg);
+            color: var(--text);
+            font-size: 18px;
+            font-weight: 700;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .plus-btn:hover { background: #e2e6f7; }
+
+        .add-card-panel {
+            background: #fff;
+            border-radius: 14px;
+            padding: 16px;
+            margin-bottom: 20px;
+            box-shadow: 0 1px 3px rgba(20, 30, 60, .06);
+        }
+        .add-card-panel h2 { margin-top: 0; font-size: 15px; }
+    </style>
+
+    <div class="hero">
+        <div class="hero-bubble">{{ hero_message }}</div>
+        <div class="hero-scene">
+            <svg viewBox="0 0 300 150" preserveAspectRatio="xMidYMid meet">
+                <ellipse cx="150" cy="98" rx="140" ry="48" fill="#dff3d3"/>
+                <polygon points="35,98 55,58 78,98" fill="#8a8fd8"/>
+                <polygon points="62,98 88,45 115,98" fill="#6b6fc4"/>
+                <polygon points="182,98 207,42 232,98" fill="#f2b544"/>
+                <polygon points="208,98 233,52 258,98" fill="#8a8fd8"/>
+                <circle cx="100" cy="84" r="9" fill="#e07a3f"/>
+                <circle cx="225" cy="86" r="8" fill="#e85fa0"/>
+                <rect x="28" y="93" width="5" height="9" rx="1" fill="#6b6fc4"/>
+                <rect x="265" y="90" width="5" height="11" rx="1" fill="#6b6fc4"/>
+            </svg>
+            <div class="hero-sun" title="Готово к повторению сейчас">{{ due_count }}</div>
+            <div class="progress-ring" style="--pct: {{ learned_pct }}%;" title="Выучено карточек">
+                <span>{{ learned_count }}/{{ total_cards }}</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="stats-row">
+        <div class="stat">
+            <div class="stat-label" style="color: var(--blue)">Не начаты</div>
+            <div class="stat-value" style="color: var(--blue)">{{ not_started_count }}</div>
+        </div>
+        <div class="stat">
+            <div class="stat-label" style="color: var(--green)">Практика сегодня</div>
+            <div class="stat-value" style="color: var(--green)">{{ reviewed_today }}</div>
+        </div>
+        <div class="stat">
+            <div class="stat-label" style="color: var(--orange)">Выучено</div>
+            <div class="stat-value" style="color: var(--orange)">{{ learned_count }}</div>
+        </div>
+    </div>
+    <p class="week-caption">На этой неделе повторено: {{ reviewed_this_week }}</p>
+
+    <a href="{% url 'cards:review' %}" class="btn-start">Начать обучение</a>
+
+    <div class="cards-block">
+        <details class="cards-section" id="cards-section"{% if not cards %} open{% endif %}>
+            <summary>Мои карточки ({{ cards|length }})</summary>
+            <div class="cards-table-wrap">
+                {% if cards %}
+                    <table>
+                        <tr>
+                            <th>Вопрос</th>
+                            <th>Ответ</th>
+                            <th>Этап</th>
+                            <th>Следующее повторение</th>
+                            <th></th>
+                        </tr>
+                        {% for card in cards %}
+                            <tr>
+                                <td>{{ card.question|truncatewords:15 }}</td>
+                                <td>{{ card.answer|truncatewords:15 }}</td>
+                                <td>{{ card.stage_label }}</td>
+                                <td>{{ card.next_review_at }}</td>
+                                <td>
+                                    <a href="{% url 'cards:edit' card.pk %}">Редактировать</a>
+                                    &nbsp;·&nbsp;
+                                    <a href="{% url 'cards:delete' card.pk %}">Удалить</a>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </table>
+                {% else %}
+                    <p>Карточек пока нет.</p>
+                {% endif %}
+            </div>
+        </details>
+        <button type="button" class="plus-btn" title="Добавить карточку" onclick="
+            var panel = document.getElementById('add-card-form');
+            panel.hidden = !panel.hidden;
+            if (!panel.hidden) { panel.scrollIntoView({behavior: 'smooth', block: 'center'}); }
+        ">+</button>
+    </div>
+
+    <div class="add-card-panel" id="add-card-form"{% if not form.errors %} hidden{% endif %}>
+        <h2>Добавить карточку</h2>
+        <form method="post">
+            {% csrf_token %}
+            {{ form.as_p }}
+            <button type="submit">Добавить</button>
+        </form>
+    </div>
+{% endblock %}

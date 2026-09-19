@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'css/site.css' %}">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script>
+        function applyTheme(theme) {
+            localStorage.setItem('theme', theme);
+            document.documentElement.setAttribute('data-theme', theme);
+        }
+        applyTheme(localStorage.getItem('theme') === 'dark' ? 'dark' : 'light');
+    </script>
+    <title>{% block title %}Django Project{% endblock %}</title>
+</head>
+<body{% if not user.is_authenticated %} class="no-tabbar"{% endif %}>
+
+<header class="topbar">
+
+    <a href="{% url 'home' %}" class="topbar-title">📇 Карточки</a>
+    <button type="button" id="theme-toggle" class="icon-btn" title="Переключить тему">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="4.5"/>
+          <path d="M12 2.5v2.5M12 19v2.5M4.2 4.2l1.8 1.8M18 18l1.8 1.8M2.5 12H5M19 12h2.5M4.2 19.8L6 18M18 6l1.8-1.8"/>
+        </svg>
+    </button>
+    {% if user.is_authenticated %}
+        <a href="{% url 'cards:list' %}" class="icon-btn" title="Мои карточки">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="6" y1="20" x2="6" y2="10"/>
+                <line x1="12" y1="20" x2="12" y2="4"/>
+                <line x1="18" y1="20" x2="18" y2="14"/>
+            </svg>
+        </a>
+    {% else %}
+        <div class="auth-links">
+            <a href="{% url 'login' %}">Войти</a>
+            <a href="{% url 'register' %}">Регистрация</a>
+        </div>
+    {% endif %}
+</header>
+
+<main>
+    {% block content %}{% endblock %}
+</main>
+
+{% if user.is_authenticated %}
+    <nav class="bottombar">
+        <a href="{% url 'cards:list' %}" class="tab{% if request.resolver_match.url_name == 'list' %} active{% endif %}">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="4" y="6" width="12" height="15" rx="2"/>
+                <rect x="8" y="2" width="12" height="15" rx="2"/>
+            </svg>
+            Обучение
+        </a>
+        <a href="{% url 'cards:review' %}" class="tab{% if request.resolver_match.url_name == 'review' %} active{% endif %}">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 11.5a4.5 4.5 0 0 1-4.5 4.5H9l-4 3v-3H5A4.5 4.5 0 0 1 .5 8.5 4.5 4.5 0 0 1 5 4h11.5A4.5 4.5 0 0 1 21 8.5z"/>
+            </svg>
+            Практика
+        </a>
+        <a href="{% url 'friends' %}" class="tab{% if request.resolver_match.url_name == 'friends' %} active{% endif %}">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="9" cy="8" r="3.2"/>
+                <path d="M2.5 20c0-3.4 3-5.4 6.5-5.4s6.5 2 6.5 5.4"/>
+                <circle cx="17" cy="7" r="2.6"/>
+                <path d="M15.2 14.8c2.6.4 4.3 2.2 4.3 5.2"/>
+            </svg>
+            Друзья
+        </a>
+        <details class="tab account-tab">
+            <summary>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="8" r="4"/>
+                    <path d="M4 21c0-4 4-6 8-6s8 2 8 6"/>
+                </svg>
+                Аккаунт
+            </summary>
+            <div class="account-panel">
+                <p>Вы вошли как {% firstof user.profile.nickname user.username %}</p>
+
+                <form action="{% url 'cards:toggle_test_mode' %}" method="post" class="icon-form">
+                    {% csrf_token %}
+                    <input type="hidden" name="next" value="{{ request.path }}">
+                    <button type="submit"
+                        title="Тестовый режим {% if request.session.test_mode %}включён{% else %}выключен{% endif %}">
+                        {% if request.session.test_mode %} test-mode: on{% else %}test-mode: off{% endif %}
+                    </button>
+                </form>
+
+                <form action="{% url 'logout' %}" method="post">
+                    {% csrf_token %}
+                    <button type="submit">Выйти</button>
+                </form>
+            </div>
+        </details>
+    </nav>
+{% endif %}
+
+<script>
+    function toggleTheme() {
+        let themaButton = document.getElementById('theme-toggle');
+        themaButton.addEventListener('click', function () {
+            let currentTheme = document.documentElement.getAttribute('data-theme');
+            let newTheme = currentTheme || 'light';
+            newTheme = newTheme === 'dark' ? 'light' : 'dark';
+            applyTheme(newTheme);
+        })
+
+    } toggleTheme() ;
+
+
+</script>
+
+</body>
+</html>
