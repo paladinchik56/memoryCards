@@ -41,6 +41,8 @@ python manage.py runserver
 
 Open `http://127.0.0.1:8000/`, register an account (confirmation codes are sent via Django's console email backend by default — check your terminal output for the code), and start adding cards.
 
+In production, set a `DJANGO_SECRET_KEY` environment variable (the repo only ships a `django-insecure-...` fallback for local dev).
+
 Run the test suite with:
 
 ```bash
