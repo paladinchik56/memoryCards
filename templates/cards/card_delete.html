@@ -1,16 +1,16 @@
 {% extends 'base.html' %}
 
-{% block title %}Удалить карточку{% endblock %}
+{% block title %}Delete card{% endblock %}
 
 {% block content %}
-    <h1>Удалить карточку?</h1>
-    <p><strong>Вопрос:</strong></p>
+    <h1>Delete card?</h1>
+    <p><strong>Question:</strong></p>
     <blockquote>{{ card.question }}</blockquote>
-    <p><strong>Ответ:</strong></p>
+    <p><strong>Answer:</strong></p>
     <blockquote>{{ card.answer }}</blockquote>
     <form method="post">
         {% csrf_token %}
-        <button type="submit">Удалить</button>
+        <button type="submit">Delete</button>
     </form>
-    <p><a href="{% url 'cards:list' %}">Отмена</a></p>
+    <p><a href="{% url 'cards:list' %}">Cancel</a></p>
 {% endblock %}

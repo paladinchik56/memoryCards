@@ -1,13 +1,13 @@
 {% extends 'base.html' %}
 
-{% block title %}Редактировать карточку{% endblock %}
+{% block title %}Edit card{% endblock %}
 
 {% block content %}
-    <h1>Редактировать карточку</h1>
+    <h1>Edit card</h1>
     <form method="post">
         {% csrf_token %}
         {{ form.as_p }}
-        <button type="submit">Сохранить</button>
+        <button type="submit">Save</button>
     </form>
-    <p><a href="{% url 'cards:list' %}">Назад к списку</a></p>
+    <p><a href="{% url 'cards:list' %}">Back to list</a></p>
 {% endblock %}

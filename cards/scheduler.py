@@ -30,12 +30,12 @@ STAGE_INTERVALS_TEST = [
 ]
 
 STAGE_LABELS = [
-    '90 секунд',
-    '30 минут',
-    '12 часов',
-    '2 дня',
-    '2 недели',
-    '2 месяца',
+    '90 seconds',
+    '30 minutes',
+    '12 hours',
+    '2 days',
+    '2 weeks',
+    '2 months',
 ]
 
 MAX_STAGE = len(STAGE_INTERVALS) - 1

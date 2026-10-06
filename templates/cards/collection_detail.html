@@ -1,0 +1,52 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ collection.name }}{% endblock %}
+
+{% block content %}
+    <h1>{{ collection.name }}</h1>
+    {% if collection.description %}
+        <p>{{ collection.description }}</p>
+    {% endif %}
+    <p>Visibility: {{ collection.get_visibility_display }}</p>
+
+    {% if collection.visibility != 'private' %}
+        <p>Share link: <code>{{ request.scheme }}://{{ request.get_host }}{% url 'cards:collection_view' collection.share_token %}</code></p>
+    {% endif %}
+
+    <div class="cards-block">
+        <div class="cards-table-wrap">
+            {% if cards %}
+                <table>
+                    <tr>
+                        <th>Question</th>
+                        <th>Answer</th>
+                    </tr>
+                    {% for card in cards %}
+                        <tr>
+                            <td>{{ card.question|truncatewords:15 }}</td>
+                            <td>{{ card.answer|truncatewords:15 }}</td>
+                        </tr>
+                    {% endfor %}
+                </table>
+            {% else %}
+                <p>This collection has no cards yet.</p>
+            {% endif %}
+        </div>
+        <button type="button" class="plus-btn" title="Add a card" onclick="
+            var panel = document.getElementById('add-card-form');
+            panel.hidden = !panel.hidden;
+            if (!panel.hidden) { panel.scrollIntoView({behavior: 'smooth', block: 'center'}); }
+        ">+</button>
+    </div>
+
+    <div class="add-card-panel" id="add-card-form"{% if not form.errors %} hidden{% endif %}>
+        <h2>Add a card to this collection</h2>
+        <form method="post">
+            {% csrf_token %}
+            {{ form.as_p }}
+            <button type="submit">Add</button>
+        </form>
+    </div>
+
+    <p><a href="{% url 'cards:collections' %}">Back to collections</a></p>
+{% endblock %}

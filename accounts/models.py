@@ -8,7 +8,7 @@ from django.db.models import CheckConstraint, F, Q, UniqueConstraint
 # `\w` is unicode-aware in Python 3, so this also allows e.g. Cyrillic nicknames.
 nickname_validator = RegexValidator(
     regex=r'^[\w-]{3,30}$',
-    message='Никнейм: 3-30 символов, буквы/цифры/подчёркивание/дефис, без пробелов.',
+    message='Nickname: 3-30 characters, letters/digits/underscore/hyphen, no spaces.',
 )
 
 

@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+
+{% block title %}Library{% endblock %}
+
+{% block content %}
+    <h1>Public library</h1>
+    <p><a href="{% url 'cards:collections' %}">My collections</a></p>
+
+    <div class="cards-block">
+        <div class="cards-table-wrap">
+            {% if collections %}
+                <table>
+                    <tr>
+                        <th>Name</th>
+                        <th>Owner</th>
+                        <th>Cards</th>
+                        <th></th>
+                    </tr>
+                    {% for collection in collections %}
+                        <tr>
+                            <td>{{ collection.name }}</td>
+                            <td>{% firstof collection.owner.profile.nickname collection.owner.username %}</td>
+                            <td>{{ collection.cards.count }}</td>
+                            <td><a href="{% url 'cards:collection_view' collection.share_token %}">Open</a></td>
+                        </tr>
+                    {% endfor %}
+                </table>
+            {% else %}
+                <p>No public collections yet.</p>
+            {% endif %}
+        </div>
+    </div>
+{% endblock %}

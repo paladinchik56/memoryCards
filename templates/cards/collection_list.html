@@ -1,0 +1,50 @@
+{% extends 'base.html' %}
+
+{% block title %}My collections{% endblock %}
+
+{% block content %}
+    <h1>My collections</h1>
+    <p><a href="{% url 'cards:library' %}">Browse public library</a></p>
+
+    <div class="cards-block">
+        <details class="cards-section" id="collections-section"{% if not collections %} open{% endif %}>
+            <summary>My collections ({{ collections|length }})</summary>
+            <div class="cards-table-wrap">
+                {% if collections %}
+                    <table>
+                        <tr>
+                            <th>Name</th>
+                            <th>Visibility</th>
+                            <th>Cards</th>
+                            <th></th>
+                        </tr>
+                        {% for collection in collections %}
+                            <tr>
+                                <td>{{ collection.name }}</td>
+                                <td>{{ collection.get_visibility_display }}</td>
+                                <td>{{ collection.cards.count }}</td>
+                                <td><a href="{% url 'cards:collection_detail' collection.pk %}">Open</a></td>
+                            </tr>
+                        {% endfor %}
+                    </table>
+                {% else %}
+                    <p>No collections yet.</p>
+                {% endif %}
+            </div>
+        </details>
+        <button type="button" class="plus-btn" title="Add a collection" onclick="
+            var panel = document.getElementById('add-collection-form');
+            panel.hidden = !panel.hidden;
+            if (!panel.hidden) { panel.scrollIntoView({behavior: 'smooth', block: 'center'}); }
+        ">+</button>
+    </div>
+
+    <div class="add-card-panel" id="add-collection-form"{% if not form.errors %} hidden{% endif %}>
+        <h2>New collection</h2>
+        <form method="post">
+            {% csrf_token %}
+            {{ form.as_p }}
+            <button type="submit">Create</button>
+        </form>
+    </div>
+{% endblock %}

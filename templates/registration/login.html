@@ -1,14 +1,14 @@
 {% extends 'base.html' %}
 
-{% block title %}Вход{% endblock %}
+{% block title %}Log in{% endblock %}
 
 {% block content %}
-    <h1>Вход</h1>
-    <p>В поле «Username» введите свой никнейм или email.</p>
+    <h1>Log in</h1>
+    <p>In the "Username" field, enter your nickname or email.</p>
     <form method="post">
         {% csrf_token %}
         {{ form.as_p }}
-        <button type="submit">Войти</button>
+        <button type="submit">Log in</button>
     </form>
-    <p>Нет аккаунта? <a href="{% url 'register' %}">Зарегистрироваться</a></p>
+    <p>Don't have an account? <a href="{% url 'register' %}">Sign up</a></p>
 {% endblock %}

@@ -1,0 +1,54 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ collection.name }}{% endblock %}
+
+{% block content %}
+    <h1>{{ collection.name }}</h1>
+    <p>by {% firstof collection.owner.profile.nickname collection.owner.username %}</p>
+    {% if collection.description %}
+        <p>{{ collection.description }}</p>
+    {% endif %}
+    <p>Visibility: {{ collection.get_visibility_display }}</p>
+
+    {% if is_owner %}
+        <p><a href="{% url 'cards:collection_detail' collection.pk %}">Manage this collection</a></p>
+    {% endif %}
+
+    <div class="cards-block">
+        <div class="cards-table-wrap">
+            {% if cards %}
+                <table>
+                    <tr>
+                        <th>Question</th>
+                        <th>Answer</th>
+                        {% if not is_owner %}<th></th>{% endif %}
+                    </tr>
+                    {% for card in cards %}
+                        <tr>
+                            <td>{{ card.question|truncatewords:15 }}</td>
+                            <td>{{ card.answer|truncatewords:15 }}</td>
+                            {% if not is_owner %}
+                                <td>
+                                    <form method="post" action="{% url 'cards:card_take' card.pk %}" class="icon-form">
+                                        {% csrf_token %}
+                                        <select name="collection">
+                                            <option value="">No collection</option>
+                                            {% for c in my_collections %}
+                                                <option value="{{ c.pk }}">{{ c.name }}</option>
+                                            {% endfor %}
+                                        </select>
+                                        <button type="submit">Add to my cards</button>
+                                    </form>
+                                </td>
+                            {% endif %}
+                        </tr>
+                    {% endfor %}
+                </table>
+            {% else %}
+                <p>This collection has no cards yet.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <p><a href="{% url 'cards:library' %}">Back to library</a></p>
+{% endblock %}

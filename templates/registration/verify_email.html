@@ -1,9 +1,9 @@
 {% extends 'base.html' %}
 
-{% block title %}Подтверждение email{% endblock %}
+{% block title %}Confirm email{% endblock %}
 
 {% block content %}
-    <h1>Подтверждение email</h1>
+    <h1>Confirm email</h1>
 
     {% if messages %}
         {% for message in messages %}
@@ -11,14 +11,14 @@
         {% endfor %}
     {% endif %}
 
-    <p>Мы отправили код подтверждения на <strong>{{ email }}</strong>.</p>
+    <p>We sent a confirmation code to <strong>{{ email }}</strong>.</p>
     <form method="post">
         {% csrf_token %}
         {{ form.as_p }}
-        <button type="submit">Подтвердить</button>
+        <button type="submit">Confirm</button>
     </form>
     <form method="post">
         {% csrf_token %}
-        <button type="submit" name="resend" value="1">Отправить код заново</button>
+        <button type="submit" name="resend" value="1">Resend code</button>
     </form>
 {% endblock %}
