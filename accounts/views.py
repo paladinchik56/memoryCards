@@ -26,8 +26,8 @@ def _generate_code():
 
 def _send_code_email(email, code):
     send_mail(
-        subject='Код подтверждения регистрации',
-        message=f'Ваш код подтверждения: {code}\nОн действует 10 минут.',
+        subject='Your registration confirmation code',
+        message=f'Your confirmation code: {code}\nIt is valid for 10 minutes.',
         from_email=None,
         recipient_list=[email],
     )
@@ -56,12 +56,12 @@ def register(request):
 def verify_email(request):
     pending = request.session.get(SESSION_KEY)
     if not pending:
-        messages.error(request, 'Сначала укажите email для регистрации.')
+        messages.error(request, 'Please enter your email to register first.')
         return redirect('register')
 
     if time.time() - pending['created'] > CODE_TTL_SECONDS:
         del request.session[SESSION_KEY]
-        messages.error(request, 'Код истёк, зарегистрируйтесь заново.')
+        messages.error(request, 'The code has expired, please register again.')
         return redirect('register')
 
     form = EmailCodeForm(request.POST or None)
@@ -72,18 +72,18 @@ def verify_email(request):
             pending['created'] = time.time()
             request.session[SESSION_KEY] = pending
             _send_code_email(pending['email'], pending['code'])
-            messages.info(request, 'Новый код отправлен на почту.')
+            messages.info(request, 'A new code has been sent to your email.')
             return redirect('verify_email')
 
         if form.is_valid():
             if form.cleaned_data['code'] != pending['code']:
-                form.add_error('code', 'Неверный код.')
+                form.add_error('code', 'Incorrect code.')
             elif Profile.objects.filter(nickname__iexact=pending['nickname']).exists():
                 # Someone else claimed the nickname while this code was
                 # pending (checked again here since it was only validated
                 # once, back on the register step).
                 del request.session[SESSION_KEY]
-                messages.error(request, 'Этот никнейм уже заняли, зарегистрируйтесь заново.')
+                messages.error(request, 'That nickname was just taken, please register again.')
                 return redirect('register')
             else:
                 try:
@@ -93,7 +93,7 @@ def verify_email(request):
                         user.save()
                         Profile.objects.create(user=user, nickname=pending['nickname'])
                 except IntegrityError:
-                    messages.error(request, 'Этот никнейм уже заняли, зарегистрируйтесь заново.')
+                    messages.error(request, 'That nickname was just taken, please register again.')
                     del request.session[SESSION_KEY]
                     return redirect('register')
                 del request.session[SESSION_KEY]
@@ -126,7 +126,7 @@ def friends(request):
             else:
                 Friendship.objects.create(from_user=request.user, to_user=target)
 
-            messages.success(request, f'Заявка в друзья отправлена пользователю {get_display_name(target)}.')
+            messages.success(request, f'Friend request sent to {get_display_name(target)}.')
             return redirect('friends')
     else:
         form = AddFriendForm(user=request.user)
@@ -167,7 +167,7 @@ def friend_request_accept(request, pk):
     )
     friend_request.status = Friendship.STATUS_ACCEPTED
     friend_request.save()
-    messages.success(request, f'Теперь вы друзья с {get_display_name(friend_request.from_user)}.')
+    messages.success(request, f'You are now friends with {get_display_name(friend_request.from_user)}.')
     return redirect('friends')
 
 
@@ -195,5 +195,5 @@ def friend_remove(request, pk):
         pk=pk, status=Friendship.STATUS_ACCEPTED,
     )
     friendship.delete()
-    messages.info(request, 'Пользователь удалён из друзей.')
+    messages.info(request, 'User removed from friends.')
     return redirect('friends')

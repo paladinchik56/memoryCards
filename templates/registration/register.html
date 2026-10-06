@@ -1,14 +1,14 @@
 {% extends 'base.html' %}
 
-{% block title %}Регистрация{% endblock %}
+{% block title %}Sign up{% endblock %}
 
 {% block content %}
-    <h1>Регистрация</h1>
-    <p>Укажите никнейм, email и пароль — мы отправим на почту код подтверждения. Никнейм видят ваши друзья, а войти потом можно по нему или по email.</p>
+    <h1>Sign up</h1>
+    <p>Enter a nickname, email and password — we'll send a confirmation code to your email. Your nickname is visible to your friends, and you can log in with either it or your email.</p>
     <form method="post">
         {% csrf_token %}
         {{ form.as_p }}
-        <button type="submit">Получить код</button>
+        <button type="submit">Get code</button>
     </form>
-    <p>Уже есть аккаунт? <a href="{% url 'login' %}">Войти</a></p>
+    <p>Already have an account? <a href="{% url 'login' %}">Log in</a></p>
 {% endblock %}

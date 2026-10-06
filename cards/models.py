@@ -1,6 +1,35 @@
 from django.conf import settings
 from django.db import models
 from django.utils import timezone
+import uuid
+
+
+class Collection(models.Model):
+    """A named group of cards, owned by one user, optionally shared with others.
+
+          `visibility` controls who can see it: PRIVATE — only the owner;
+          UNLISTED — anyone with the direct link (via `share_token`); PUBLIC —
+          listed for everyone in the shared library.
+          """
+
+    VISIBILITY_PRIVATE = 'private'
+    VISIBILITY_UNLISTED = 'unlisted'
+    VISIBILITY_PUBLIC = 'public'
+    VISIBILITY_CHOICES = [
+    (VISIBILITY_PRIVATE, 'Private'),
+    (VISIBILITY_UNLISTED, 'Unlisted (by link)'),
+    (VISIBILITY_PUBLIC, 'Public'),
+      ]
+
+    owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='collections')
+    name = models.CharField(max_length=100)
+    description = models.TextField(max_length=700, blank=True)
+    visibility = models.CharField(max_length=10, choices=VISIBILITY_CHOICES, default=VISIBILITY_PRIVATE)
+    share_token = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.name
 
 
 class Card(models.Model):
@@ -14,6 +43,12 @@ class Card(models.Model):
     next_review_at = models.DateTimeField(default=timezone.now)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    collection = models.ForeignKey(
+    Collection, on_delete=models.SET_NULL, null=True, blank=True, related_name='cards',
+    )
+    source_collection = models.ForeignKey(
+    Collection, on_delete = models.SET_NULL, null=True, blank=True, related_name='+',
+    )
 
     class Meta:
         constraints = [
@@ -46,5 +81,7 @@ class ReviewLog(models.Model):
     class Meta:
         ordering = ['-reviewed_at']
 
+
     def __str__(self):
         return f'{self.card_id} @ {self.reviewed_at}: {"correct" if self.was_correct else "incorrect"}'
+

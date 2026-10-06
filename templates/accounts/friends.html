@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}Друзья{% endblock %}
+{% block title %}Friends{% endblock %}
 
 {% block content %}
     <style>
@@ -71,32 +71,32 @@
         .empty-hint { color: var(--text-muted); font-size: 13px; }
     </style>
 
-    <h1>Друзья</h1>
+    <h1>Friends</h1>
 
     <div class="panel">
-        <h2>Добавить друга</h2>
+        <h2>Add a friend</h2>
         <form method="post">
             {% csrf_token %}
             {{ form.identifier }}
             {{ form.identifier.errors }}
-            <button type="submit">Отправить заявку</button>
+            <button type="submit">Send request</button>
         </form>
     </div>
 
     {% if incoming_requests %}
         <div class="panel">
-            <h2>Входящие заявки</h2>
+            <h2>Incoming requests</h2>
             {% for req in incoming_requests %}
                 <div class="request-row">
                     <span>{% firstof req.from_user.profile.nickname req.from_user.username %}</span>
                     <div class="request-actions">
                         <form method="post" action="{% url 'friend_request_accept' req.pk %}">
                             {% csrf_token %}
-                            <button type="submit" class="btn-small btn-accept">Принять</button>
+                            <button type="submit" class="btn-small btn-accept">Accept</button>
                         </form>
                         <form method="post" action="{% url 'friend_request_decline' req.pk %}">
                             {% csrf_token %}
-                            <button type="submit" class="btn-small btn-decline">Отклонить</button>
+                            <button type="submit" class="btn-small btn-decline">Decline</button>
                         </form>
                     </div>
                 </div>
@@ -106,18 +106,18 @@
 
     {% if outgoing_requests %}
         <div class="panel">
-            <h2>Отправленные заявки</h2>
+            <h2>Sent requests</h2>
             {% for req in outgoing_requests %}
                 <div class="request-row">
                     <span>{% firstof req.to_user.profile.nickname req.to_user.username %}</span>
-                    <span class="empty-hint">Ожидает ответа</span>
+                    <span class="empty-hint">Awaiting response</span>
                 </div>
             {% endfor %}
         </div>
     {% endif %}
 
     <div class="panel">
-        <h2>Мои друзья ({{ friends|length }})</h2>
+        <h2>My friends ({{ friends|length }})</h2>
         {% if friends %}
             {% for entry in friends %}
                 <div class="friend-row">
@@ -127,17 +127,17 @@
                         <div class="friend-progress-bar">
                             <span style="width: {{ entry.progress.learned_pct }}%;"></span>
                         </div>
-                        <div class="friend-meta">Выучено {{ entry.progress.learned_count }}/{{ entry.progress.total_cards }} карточек</div>
+                        <div class="friend-meta">Learned {{ entry.progress.learned_count }}/{{ entry.progress.total_cards }} cards</div>
                     </div>
-                    <div class="level-badge">Уровень {{ entry.progress.level }}</div>
+                    <div class="level-badge">Level {{ entry.progress.level }}</div>
                     <form method="post" action="{% url 'friend_remove' entry.friendship_pk %}">
                         {% csrf_token %}
-                        <button type="submit" class="btn-small btn-decline" title="Удалить из друзей">✕</button>
+                        <button type="submit" class="btn-small btn-decline" title="Remove from friends">✕</button>
                     </form>
                 </div>
             {% endfor %}
         {% else %}
-            <p class="empty-hint">Пока нет друзей. Отправьте заявку по нику или email выше.</p>
+            <p class="empty-hint">No friends yet. Send a request by nickname or email above.</p>
         {% endif %}
     </div>
 {% endblock %}

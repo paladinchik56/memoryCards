@@ -156,7 +156,7 @@ class RegistrationFlowTests(TestCase):
             'password1': 'a-very-strong-pw-92',
             'password2': 'a-very-strong-pw-92',
         })
-        code = mail.outbox[-1].body.split('код подтверждения: ')[1].split('\n')[0]
+        code = mail.outbox[-1].body.split('confirmation code: ')[1].split('\n')[0]
 
         self.client.post(reverse('verify_email'), {'code': code})
 
@@ -307,4 +307,4 @@ class FriendsViewTests(TestCase):
         self.assertEqual(entry['nickname'], 'Bobby')
         self.assertEqual(entry['progress']['level'], 2)
         self.assertContains(response, 'Bobby')
-        self.assertContains(response, 'Уровень 2')
+        self.assertContains(response, 'Level 2')
