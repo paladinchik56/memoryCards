@@ -23,7 +23,7 @@
                                 <td>{{ collection.name }}</td>
                                 <td>{{ collection.get_visibility_display }}</td>
                                 <td>{{ collection.cards.count }}</td>
-                                <td><a href="{% url 'cards:collection_detail' collection.pk %}">Open</a></td>
+                                <td><a href="{% url 'cards:collection_detail' collection.pk %}">Open</a> · <a href="{% url 'cards:study_choose' collection.pk %}">Study</a></td>
                             </tr>
                         {% endfor %}
                     </table>

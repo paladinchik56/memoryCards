@@ -13,12 +13,14 @@
                     <tr>
                         <th>Topic</th>
                         <th>Cards</th>
+                        <th>Run</th>
                         <th></th>
                     </tr>
                     {% for collection in collections %}
                         <tr>
                             <td>{{ collection.name }}</td>
                             <td>{{ collection.cards.count }}</td>
+                            <td>{% if collection.run %}{% if collection.run.completed %}done ✓{% else %}round {{ collection.run.round }}, {{ collection.run.queue|length }} left{% endif %}{% else %}—{% endif %}</td>
                             <td><a href="{% url 'cards:study_choose' collection.pk %}">Study</a></td>
                         </tr>
                     {% endfor %}

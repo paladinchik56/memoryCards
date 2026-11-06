@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load static %}
 
 {% block title %}Review{% endblock %}
 
@@ -6,14 +7,17 @@
     <h1>Review</h1>
 
     {% if collections %}
-        <form method="get" class="icon-form" style="margin-bottom: 16px;">
-            <select name="collection" onchange="this.form.submit()">
-                <option value="">All collections</option>
+        <details class="topic-filter">
+            <summary>Topics: {% if filter_active %}{{ filter_names|join:", " }}{% else %}all{% endif %}</summary>
+            <form method="get">
                 {% for c in collections %}
-                    <option value="{{ c.pk }}"{% if selected_collection.pk == c.pk %} selected{% endif %}>{{ c.name }}</option>
+                    <label><input type="checkbox" name="collection" value="{{ c.pk }}"{% if c.pk in selected_ids %} checked{% endif %}> {{ c.name }}</label>
                 {% endfor %}
-            </select>
-        </form>
+                <label><input type="checkbox" name="collection" value="none"{% if include_none %} checked{% endif %}> No collection</label>
+                <button type="submit">Apply</button>
+                {% if filter_active %}<a href="{% url 'cards:review' %}">Show all</a>{% endif %}
+            </form>
+        </details>
     {% endif %}
 
     <div style="position: relative; height: 44px;">
@@ -26,7 +30,7 @@
     <div class="add-card-panel" id="add-card-form"{% if not form.errors %} hidden{% endif %}>
         <h2>Add a card</h2>
         <p class="empty-hint">Added here, it joins today's review pool right away.</p>
-        <form method="post" action="{% url 'cards:review' %}{% if selected_collection %}?collection={{ selected_collection.pk }}{% endif %}">
+        <form method="post" action="{% url 'cards:review' %}{% if topic_query %}?{{ topic_query }}{% endif %}">
             {% csrf_token %}
             {{ form.as_p }}
             <button type="submit">Add</button>
@@ -49,11 +53,11 @@
     </div>
     <form method="post" action="{% url 'cards:grade' card.pk %}" id="grade-form" hidden>
           {% csrf_token %}
-          <input type="hidden" name="collection" value="{{ selected_collection.pk|default_if_none:'' }}">
-          <button type="submit" name="correct" value="1">Got it right</button>
-          <button type="submit" name="correct" value="0">Didn't remember / got it wrong</button>
-
+          {% for pk in selected_ids %}<input type="hidden" name="collection" value="{{ pk }}">{% endfor %}{% if include_none %}<input type="hidden" name="collection" value="none">{% endif %}
+          <button type="submit" name="correct" value="0" class="grade-wrong" title="← key">← Didn't remember</button>
+          <button type="submit" name="correct" value="1" class="grade-right" title="→ key">Got it right →</button>
     </form>
+    <p class="week-caption key-hint">Tap the card or press Space to flip · ← wrong · → right</p>
 
     {% else %}
         <p>No cards due for review right now 🎉</p>
@@ -63,23 +67,12 @@
     {% if has_history %}
         <form method="post" action="{% url 'cards:undo' %}" style="margin-top: 20px;">
             {% csrf_token %}
-            <input type="hidden" name="collection" value="{{ selected_collection.pk|default_if_none:'' }}">
+            {% for pk in selected_ids %}<input type="hidden" name="collection" value="{{ pk }}">{% endfor %}{% if include_none %}<input type="hidden" name="collection" value="none">{% endif %}
             <button type="submit">← Previous card (clicked the wrong one)</button>
         </form>
     {% endif %}
 
     <p><a href="{% url 'cards:list' %}">Back to card list</a></p>
-
-     <script>
-        function flipCard() {
-            let card = document.getElementById("flashcard-inner");
-            let gradeForm = document.getElementById("grade-form");
-            card.addEventListener("click", function () {
-                card.classList.toggle('flipped');
-                gradeForm.hidden = !gradeForm.hidden;
-            })
-        }
-         flipCard();
-    </script>
+    <script src="{% static 'js/flashcard.js' %}"></script>
 
 {% endblock %}

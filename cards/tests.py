@@ -5,7 +5,7 @@ from django.test import SimpleTestCase, TestCase
 from django.urls import reverse
 from django.utils import timezone
 
-from .models import Card, Collection, ReviewLog
+from .models import Card, Collection, ReviewLog, TopicRun
 from .progress import LEVEL_SIZE, get_learned_count, get_user_level, get_user_progress
 from .quotes import QUOTES, get_quote_of_the_day
 from .scheduler import (
@@ -342,6 +342,55 @@ class CollectionTakeTests(TestCase):
         self.assertFalse(Card.objects.filter(user=self.bob).exists())
 
 
+class PrivateSharingFlowTests(TestCase):
+    """End to end: make a private set, share it by link, someone copies it."""
+
+    def setUp(self):
+        self.alice = User.objects.create_user('alice', password='pw12345')
+        self.bob = User.objects.create_user('bob', password='pw12345')
+
+    def test_private_set_shared_by_link(self):
+        self.client.login(username='alice', password='pw12345')
+        self.client.post(reverse('cards:collections'), {'name': 'Secret set', 'description': '', 'visibility': 'private'})
+        collection = Collection.objects.get(owner=self.alice, name='Secret set')
+        self.assertEqual(collection.visibility, Collection.VISIBILITY_PRIVATE)
+        self.client.post(reverse('cards:collection_detail', args=[collection.pk]),
+                         {'question': 'q1', 'answer': 'a1', 'collection': collection.pk})
+        link = reverse('cards:collection_view', args=[collection.share_token])
+
+        self.assertNotContains(self.client.get(reverse('cards:collection_detail', args=[collection.pk])), link)
+        self.client.logout()
+        self.client.login(username='bob', password='pw12345')
+        self.assertEqual(self.client.get(link).status_code, 404)
+
+        self.client.logout()
+        self.client.login(username='alice', password='pw12345')
+        self.client.post(reverse('cards:collection_set_visibility', args=[collection.pk]), {'visibility': 'unlisted'})
+        self.assertContains(self.client.get(reverse('cards:collection_detail', args=[collection.pk])), link)
+
+        self.client.logout()
+        self.client.login(username='bob', password='pw12345')
+        self.assertContains(self.client.get(link), 'q1')
+        self.assertNotContains(self.client.get(reverse('cards:library')), 'Secret set')
+        self.client.post(reverse('cards:collection_take', args=[collection.share_token]), {'collection': 'new'})
+        self.assertTrue(Card.objects.filter(user=self.bob, question='q1', collection__name='Secret set').exists())
+
+        self.client.logout()
+        self.client.login(username='alice', password='pw12345')
+        self.client.post(reverse('cards:collection_set_visibility', args=[collection.pk]), {'visibility': 'private'})
+        self.client.logout()
+        self.client.login(username='bob', password='pw12345')
+        self.assertEqual(self.client.get(link).status_code, 404)
+
+    def test_cannot_change_visibility_of_someone_elses_set(self):
+        collection = Collection.objects.create(owner=self.alice, name='A')
+        self.client.login(username='bob', password='pw12345')
+        response = self.client.post(reverse('cards:collection_set_visibility', args=[collection.pk]), {'visibility': 'public'})
+        self.assertEqual(response.status_code, 404)
+        collection.refresh_from_db()
+        self.assertEqual(collection.visibility, Collection.VISIBILITY_PRIVATE)
+
+
 class CardSetCollectionTests(TestCase):
     """Tests for moving one of a user's own cards between their own
     collections, without disturbing its review progress."""
@@ -543,7 +592,7 @@ class StudyByTopicsTests(TestCase):
         response = self.client.get(reverse('cards:study_choose', args=[self.collection.pk]))
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'Go through the whole topic')
-        self.assertContains(response, "Only what's not learned yet")
+        self.assertContains(response, "Only what's due")
 
     def test_cannot_choose_study_mode_for_someone_elses_topic(self):
         bob = User.objects.create_user('bob', password='pw12345')
@@ -552,64 +601,151 @@ class StudyByTopicsTests(TestCase):
         self.assertEqual(response.status_code, 404)
 
 
-class QuizTests(TestCase):
-    """Tests for the ungraded "whole topic" quiz: it must never touch a
-    Card's stage/next_review_at or write a ReviewLog, since it's a practice
-    pass, not a spaced-repetition session -- all state lives in the session."""
+class TopicRunTests(TestCase):
+    """The whole-topic run: DB-backed, round after round of only the missed
+    cards, never touching Card.stage/next_review_at or ReviewLog."""
 
     def setUp(self):
         self.alice = User.objects.create_user('alice', password='pw12345')
         self.client.login(username='alice', password='pw12345')
         self.collection = Collection.objects.create(owner=self.alice, name='Spanish')
-        self.card1 = Card.objects.create(user=self.alice, question='hola', answer='hello', collection=self.collection, stage=0)
-        self.card2 = Card.objects.create(user=self.alice, question='gracias', answer='thanks', collection=self.collection, stage=0)
+        self.card1 = Card.objects.create(user=self.alice, question='hola', answer='hello', collection=self.collection)
+        self.card2 = Card.objects.create(user=self.alice, question='gracias', answer='thanks', collection=self.collection)
+        self.pk = self.collection.pk
 
-    def test_starting_a_quiz_queues_every_card_in_the_topic(self):
-        self.client.post(reverse('cards:quiz_start', args=[self.collection.pk]))
-        response = self.client.get(reverse('cards:quiz'))
-        self.assertEqual(response.context['total'], 2)
-        self.assertIn(response.context['card'], [self.card1, self.card2])
+    def _start(self):
+        self.client.post(reverse('cards:run_start', args=[self.pk]))
 
-    def test_grading_in_a_quiz_does_not_touch_the_cards_stage(self):
-        self.client.post(reverse('cards:quiz_start', args=[self.collection.pk]))
-        first_card = self.client.get(reverse('cards:quiz')).context['card']
-        self.client.post(reverse('cards:quiz_grade'), {'correct': '1'})
+    def _current(self):
+        return self.client.get(reverse('cards:topic_run', args=[self.pk])).context.get('card')
 
-        first_card.refresh_from_db()
-        self.assertEqual(first_card.stage, 0)
+    def _grade(self, correct):
+        card = self._current()
+        self.client.post(reverse('cards:run_grade', args=[self.pk]), {'card': card.pk, 'correct': '1' if correct else '0'})
+        return card
 
-    def test_grading_in_a_quiz_does_not_write_a_review_log(self):
-        self.client.post(reverse('cards:quiz_start', args=[self.collection.pk]))
-        self.client.post(reverse('cards:quiz_grade'), {'correct': '0'})
+    def _run(self):
+        return TopicRun.objects.get(user=self.alice, collection=self.collection)
+
+    def test_start_queues_every_card_in_the_topic(self):
+        self._start()
+        run = self._run()
+        self.assertEqual(sorted(run.queue), sorted([self.card1.pk, self.card2.pk]))
+        self.assertEqual(run.round, 1)
+
+    def test_grading_does_not_touch_stage_or_review_log(self):
+        self._start()
+        card = self._grade(True)
+        self._grade(False)
+        card.refresh_from_db()
+        self.assertEqual(card.stage, 0)
         self.assertFalse(ReviewLog.objects.exists())
 
-    def test_quiz_shows_a_summary_once_the_queue_is_empty(self):
-        self.client.post(reverse('cards:quiz_start', args=[self.collection.pk]))
-        self.client.post(reverse('cards:quiz_grade'), {'correct': '1'})
-        self.client.post(reverse('cards:quiz_grade'), {'correct': '0'})
+    def test_progress_is_stored_in_db_and_survives_a_new_login(self):
+        self._start()
+        first = self._grade(False)
+        self.client.logout()
+        self.client.login(username='alice', password='pw12345')
+        self.assertNotEqual(self._current(), first)
+        self.assertEqual(self._run().wrong, [first.pk])
 
-        response = self.client.get(reverse('cards:quiz'))
-        self.assertTrue(response.context['finished'])
-        self.assertEqual(response.context['correct_count'], 1)
-        self.assertEqual(response.context['wrong_count'], 1)
+    def test_starting_again_continues_instead_of_restarting(self):
+        self._start()
+        self._grade(True)
+        self._start()
+        self.assertEqual(len(self._run().queue), 1)
 
-    def test_retry_only_requeues_the_cards_missed_last_pass(self):
-        self.client.post(reverse('cards:quiz_start', args=[self.collection.pk]))
-        self.client.post(reverse('cards:quiz_grade'), {'correct': '1'})  # card A: right
-        self.client.post(reverse('cards:quiz_grade'), {'correct': '0'})  # card B: wrong
+    def test_next_round_has_only_the_missed_cards(self):
+        self._start()
+        self._grade(True)
+        missed = self._grade(False)
+        self.client.post(reverse('cards:run_next_round', args=[self.pk]))
+        run = self._run()
+        self.assertEqual((run.round, run.queue, run.wrong), (2, [missed.pk], []))
 
-        self.client.post(reverse('cards:quiz_retry'))
-        response = self.client.get(reverse('cards:quiz'))
-        self.assertEqual(response.context['total'], 1)
+    def test_all_correct_completes_the_run(self):
+        self._start()
+        self._grade(True)
+        self._grade(True)
+        self.assertTrue(self._run().completed)
 
-    def test_exiting_clears_the_quiz_session_state(self):
-        self.client.post(reverse('cards:quiz_start', args=[self.collection.pk]))
-        self.client.post(reverse('cards:quiz_exit'))
-        response = self.client.get(reverse('cards:quiz'))
-        self.assertRedirects(response, reverse('cards:study_topics'))
+    def test_stale_grade_for_a_different_card_is_ignored(self):
+        self._start()
+        card = self._grade(True)
+        self.client.post(reverse('cards:run_grade', args=[self.pk]), {'card': card.pk, 'correct': '0'})
+        self.assertEqual(len(self._run().queue), 1)
+        self.assertEqual(self._run().wrong, [])
 
-    def test_cannot_start_a_quiz_on_someone_elses_topic(self):
+    def test_reset_deletes_only_the_run(self):
+        self.card1.stage = 3
+        self.card1.save()
+        self._start()
+        self._grade(False)
+        self.client.post(reverse('cards:run_reset', args=[self.pk]))
+        self.assertFalse(TopicRun.objects.exists())
+        self.card1.refresh_from_db()
+        self.assertEqual(self.card1.stage, 3)
+
+    def test_reset_with_restart_begins_a_fresh_round_one(self):
+        self._start()
+        self._grade(True)
+        self._grade(True)
+        self.client.post(reverse('cards:run_reset', args=[self.pk]), {'restart': '1'})
+        run = self._run()
+        self.assertEqual((run.round, len(run.queue)), (1, 2))
+
+    def test_runs_of_different_topics_are_independent(self):
+        other = Collection.objects.create(owner=self.alice, name='French')
+        Card.objects.create(user=self.alice, question='bonjour', answer='hi', collection=other)
+        self._start()
+        self.client.post(reverse('cards:run_start', args=[other.pk]))
+        self.assertEqual(TopicRun.objects.filter(user=self.alice).count(), 2)
+
+    def test_deleted_card_is_dropped_from_the_queue(self):
+        self._start()
+        Card.objects.get(pk=self._run().queue[0]).delete()
+        self.assertIsNotNone(self._current())
+        self.assertEqual(len(self._run().queue), 1)
+
+    def test_cannot_start_a_run_on_someone_elses_topic(self):
         bob = User.objects.create_user('bob', password='pw12345')
         bobs_collection = Collection.objects.create(owner=bob, name="Bob's")
-        response = self.client.post(reverse('cards:quiz_start', args=[bobs_collection.pk]))
+        response = self.client.post(reverse('cards:run_start', args=[bobs_collection.pk]))
         self.assertEqual(response.status_code, 404)
+
+
+class ReviewMultiTopicFilterTests(TestCase):
+    def setUp(self):
+        self.alice = User.objects.create_user('alice', password='pw12345')
+        self.client.login(username='alice', password='pw12345')
+        self.a = Collection.objects.create(owner=self.alice, name='A')
+        self.b = Collection.objects.create(owner=self.alice, name='B')
+        self.c = Collection.objects.create(owner=self.alice, name='C')
+        past = timezone.now() - timedelta(hours=1)
+        self.card_a = Card.objects.create(user=self.alice, question='a', answer='a', collection=self.a, next_review_at=past - timedelta(minutes=3))
+        self.card_c = Card.objects.create(user=self.alice, question='c', answer='c', collection=self.c, next_review_at=past - timedelta(minutes=2))
+        self.card_none = Card.objects.create(user=self.alice, question='n', answer='n', next_review_at=past - timedelta(minutes=1))
+        self.card_b = Card.objects.create(user=self.alice, question='b', answer='b', collection=self.b, next_review_at=past)
+
+    def _card(self, *values):
+        return self.client.get(reverse('cards:review'), {'collection': list(values)}).context['card']
+
+    def test_several_topics_at_once(self):
+        self.assertEqual(self._card(self.b.pk, self.c.pk), self.card_c)
+
+    def test_no_collection_option(self):
+        self.assertEqual(self._card('none'), self.card_none)
+        self.assertEqual(self._card('none', self.b.pk), self.card_none)
+
+    def test_grade_keeps_the_filter(self):
+        response = self.client.post(
+            reverse('cards:grade', args=[self.card_c.pk]),
+            {'correct': '1', 'collection': [self.b.pk, self.c.pk]},
+        )
+        self.assertEqual(response.url, f"{reverse('cards:review')}?collection={self.b.pk}&collection={self.c.pk}")
+        self.assertEqual(self.client.get(response.url).context['card'], self.card_b)
+
+    def test_foreign_collection_ids_are_ignored(self):
+        bob = User.objects.create_user('bob', password='pw12345')
+        foreign = Collection.objects.create(owner=bob, name='X')
+        self.assertEqual(self._card(foreign.pk), self.card_a)

@@ -6,10 +6,10 @@ from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
-from django.utils.http import url_has_allowed_host_and_scheme
+from django.utils.http import url_has_allowed_host_and_scheme, urlencode
 
 from .forms import CardForm, CollectionForm
-from .models import Card, ReviewLog, Collection
+from .models import Card, Collection, ReviewLog, TopicRun
 from .quotes import get_quote_of_the_day
 from .scheduler import MAX_STAGE, STAGE_LABELS, TEST_MODE_INTERVAL, schedule_next_review
 
@@ -226,16 +226,37 @@ def toggle_test_mode(request):
     return redirect('cards:review')
 
 
+NO_COLLECTION = 'none'
+
+
+def _parse_topic_filter(user, values):
+    """Turn the ?collection=... values (any number of them) into the user's
+    selected collections plus whether "no collection" is ticked. Unknown or
+    foreign ids are ignored rather than 404ing -- it's just a filter."""
+    ids = [v for v in values if v.isdigit()]
+    selected = list(Collection.objects.filter(owner=user, pk__in=ids))
+    return selected, NO_COLLECTION in values
+
+
+def _topic_query(selected, include_none):
+    params = [('collection', c.pk) for c in selected]
+    if include_none:
+        params.append(('collection', NO_COLLECTION))
+    return urlencode(params)
+
+
+def _review_url(selected, include_none):
+    """The review screen's URL carrying the active topic filter along."""
+    query = _topic_query(selected, include_none)
+    return reverse('cards:review') + (f'?{query}' if query else '')
+
+
 @login_required
 def review(request):
-    # The collection filter is read from the query string even on a POST
-    # (the add-card form's `action` carries it along, see review.html) so
-    # that adding a card while a filter is active redirects back into the
-    # same filtered view instead of silently dropping the filter.
-    selected_collection = None
-    collection_id = request.GET.get('collection')
-    if collection_id:
-        selected_collection = get_object_or_404(Collection, pk=collection_id, owner=request.user)
+    # The topic filter is read from the query string even on a POST (the
+    # add-card form's `action` carries it along, see review.html) so adding
+    # a card while a filter is active returns to the same filtered view.
+    selected, include_none = _parse_topic_filter(request.user, request.GET.getlist('collection'))
 
     if request.method == 'POST':
         form = CardForm(request.POST, user=request.user)
@@ -247,14 +268,17 @@ def review(request):
             # jumping the queue ahead of them.
             card.next_review_at = timezone.now()
             card.save()
-            return redirect(_review_url(selected_collection))
+            return redirect(_review_url(selected, include_none))
     else:
-        initial = {'collection': selected_collection.pk} if selected_collection else None
+        initial = {'collection': selected[0].pk} if len(selected) == 1 and not include_none else None
         form = CardForm(user=request.user, initial=initial)
 
     cards = Card.objects.filter(user=request.user, next_review_at__lte=timezone.now())
-    if selected_collection:
-        cards = cards.filter(collection=selected_collection)
+    if selected or include_none:
+        topic_q = Q(collection__in=selected)
+        if include_none:
+            topic_q |= Q(collection__isnull=True)
+        cards = cards.filter(topic_q)
 
     card = cards.order_by('next_review_at').first()
     has_history = ReviewLog.objects.filter(user=request.user).exists()
@@ -262,27 +286,20 @@ def review(request):
         'card': card,
         'has_history': has_history,
         'collections': Collection.objects.filter(owner=request.user),
-        'selected_collection': selected_collection,
+        'selected_ids': {c.pk for c in selected},
+        'include_none': include_none,
+        'filter_active': bool(selected or include_none),
+        'filter_names': [c.name for c in selected] + (['No collection'] if include_none else []),
+        'topic_query': _topic_query(selected, include_none),
         'form': form,
     })
 
 
-def _review_url(selected_collection):
-    """The review screen's URL, carrying the active ?collection= filter
-    (if any) along -- shared by the add-card redirect here and by
-    _review_redirect below (grade/undo)."""
-    if selected_collection:
-        return f"{reverse('cards:review')}?collection={selected_collection.pk}"
-    return reverse('cards:review')
-
-
 def _review_redirect(request):
-    """Redirect back to the review screen, preserving the ?collection=
-    filter (if any) that was active when the grade/undo form was submitted."""
-    collection_id = request.POST.get('collection')
-    if collection_id:
-        return redirect(f"{reverse('cards:review')}?collection={collection_id}")
-    return redirect(reverse('cards:review'))
+    """Redirect back to the review screen, preserving the topic filter that
+    was active when the grade/undo form was submitted."""
+    selected, include_none = _parse_topic_filter(request.user, request.POST.getlist('collection'))
+    return redirect(_review_url(selected, include_none))
 
 
 @login_required
@@ -378,9 +395,25 @@ def collection_detail(request, pk):
 
     return render(request, template_name='cards/collection_detail.html', context={
         'collection': collection,
+        'visibility_choices': Collection.VISIBILITY_CHOICES,
+        'share_path': reverse('cards:collection_view', args=[collection.share_token]),
         'cards': collection.cards.all(),
         'form': form,
     })
+
+
+@login_required
+def collection_set_visibility(request, pk):
+    """Change who can see one of the user's own collections. The share
+    link (share_token) stays the same, so switching private -> by-link ->
+    private turns the same link on and off."""
+    collection = get_object_or_404(Collection, pk=pk, owner=request.user)
+    if request.method == 'POST':
+        visibility = request.POST.get('visibility')
+        if visibility in dict(Collection.VISIBILITY_CHOICES):
+            collection.visibility = visibility
+            collection.save(update_fields=['visibility'])
+    return redirect('cards:collection_detail', pk=pk)
 
 
 @login_required
@@ -416,124 +449,107 @@ def collection_view(request, token):
     })
 
 
-SESSION_QUIZ_KEY = 'quiz'
-
-
 @login_required
 def study_topics(request):
     """Topic picker: the user's own collections, each leading to
-    study_choose. "Add topics" sends them to the library to make/take more."""
-    collections = Collection.objects.filter(owner=request.user)
+    study_choose, with the state of its whole-topic run if one is going."""
+    collections = list(Collection.objects.filter(owner=request.user))
+    runs = {r.collection_id: r for r in TopicRun.objects.filter(user=request.user)}
+    for collection in collections:
+        collection.run = runs.get(collection.pk)
     return render(request, 'cards/study_topics.html', {'collections': collections})
 
 
 @login_required
 def study_choose(request, pk):
-    """Ask how to study one topic: the whole thing (an ungraded quiz, see
-    quiz_start) or just what's not learned yet (the ordinary spaced-repetition
-    review, filtered to this collection -- same as the collection filter on
-    the review screen)."""
+    """Ask how to study one topic: go through the whole thing (a TopicRun,
+    see topic_run) or just what's due (the ordinary spaced-repetition review,
+    filtered to this collection)."""
     collection = get_object_or_404(Collection, pk=pk, owner=request.user)
-    return render(request, 'cards/study_choose.html', {'collection': collection})
+    run = TopicRun.objects.filter(user=request.user, collection=collection).first()
+    return render(request, 'cards/study_choose.html', {'collection': collection, 'run': run})
 
 
-@login_required
-def quiz_start(request, pk):
-    """Start an ad-hoc, ungraded run through every card in one topic.
-
-    This deliberately never touches Card.stage/next_review_at or writes a
-    ReviewLog -- it's a practice pass, not a spaced-repetition session.
-    All of its state (which cards are left, which were missed) lives only
-    in the session, under SESSION_QUIZ_KEY.
-    """
-    if request.method != 'POST':
-        return redirect('cards:study_topics')
-
-    collection = get_object_or_404(Collection, pk=pk, owner=request.user)
-    card_ids = list(collection.cards.filter(user=request.user).values_list('pk', flat=True))
+def _new_round(card_ids):
+    card_ids = list(card_ids)
     random.shuffle(card_ids)
-
-    request.session[SESSION_QUIZ_KEY] = {
-        'collection_id': collection.pk,
-        'collection_name': collection.name,
-        'queue': card_ids,
-        'wrong': [],
-        'total': len(card_ids),
-        'correct_count': 0,
-    }
-    return redirect('cards:quiz')
+    return {'queue': card_ids, 'wrong': [], 'round_total': len(card_ids), 'correct_count': 0}
 
 
 @login_required
-def quiz(request):
-    state = request.session.get(SESSION_QUIZ_KEY)
-    if not state:
-        return redirect('cards:study_topics')
-
-    if state['queue']:
-        card = get_object_or_404(Card, pk=state['queue'][0], user=request.user)
-        return render(request, 'cards/quiz.html', {
-            'card': card,
-            'collection_name': state['collection_name'],
-            'remaining': len(state['queue']),
-            'total': state['total'],
-        })
-
-    # Queue empty -- this pass is done, show the summary/retry screen.
-    return render(request, 'cards/quiz.html', {
-        'finished': True,
-        'collection_name': state['collection_name'],
-        'correct_count': state['correct_count'],
-        'wrong_count': len(state['wrong']),
-        'total': state['total'],
-    })
-
-
-@login_required
-def quiz_grade(request):
-    """Mark the current quiz card right/wrong and advance -- session-only,
-    no Card/ReviewLog write (see quiz_start's docstring for why)."""
+def run_start(request, pk):
+    """Continue this topic's run, or start round 1 over every card in the
+    topic if there's none yet. Never touches Card.stage or ReviewLog."""
     if request.method != 'POST':
-        return redirect('cards:quiz')
-
-    state = request.session.get(SESSION_QUIZ_KEY)
-    if not state or not state['queue']:
-        return redirect('cards:quiz')
-
-    card_id = state['queue'].pop(0)
-    if request.POST.get('correct') == '1':
-        state['correct_count'] += 1
-    else:
-        state['wrong'].append(card_id)
-    request.session[SESSION_QUIZ_KEY] = state
-
-    return redirect('cards:quiz')
+        return redirect('cards:study_choose', pk=pk)
+    collection = get_object_or_404(Collection, pk=pk, owner=request.user)
+    if not TopicRun.objects.filter(user=request.user, collection=collection).exists():
+        card_ids = collection.cards.filter(user=request.user).values_list('pk', flat=True)
+        TopicRun.objects.create(user=request.user, collection=collection, **_new_round(card_ids))
+    return redirect('cards:topic_run', pk=pk)
 
 
 @login_required
-def quiz_retry(request):
-    """Start a new pass through only the cards missed in the previous one."""
+def topic_run(request, pk):
+    collection = get_object_or_404(Collection, pk=pk, owner=request.user)
+    run = TopicRun.objects.filter(user=request.user, collection=collection).first()
+    if run is None:
+        return redirect('cards:study_choose', pk=pk)
+
+    # Drop cards deleted since the run started.
+    if run.queue:
+        alive = set(Card.objects.filter(user=request.user, pk__in=run.queue).values_list('pk', flat=True))
+        if len(alive) != len(run.queue):
+            run.queue = [cid for cid in run.queue if cid in alive]
+            run.save()
+
+    context = {'collection': collection, 'run': run}
+    if run.queue:
+        context['card'] = Card.objects.get(pk=run.queue[0])
+        context['position'] = run.round_total - len(run.queue) + 1
+    return render(request, 'cards/quiz.html', context)
+
+
+@login_required
+def run_grade(request, pk):
     if request.method != 'POST':
-        return redirect('cards:quiz')
-
-    state = request.session.get(SESSION_QUIZ_KEY)
-    if not state:
-        return redirect('cards:study_topics')
-
-    wrong = state['wrong']
-    request.session[SESSION_QUIZ_KEY] = {
-        'collection_id': state['collection_id'],
-        'collection_name': state['collection_name'],
-        'queue': wrong,
-        'wrong': [],
-        'total': len(wrong),
-        'correct_count': 0,
-    }
-    return redirect('cards:quiz')
+        return redirect('cards:topic_run', pk=pk)
+    run = get_object_or_404(TopicRun, user=request.user, collection_id=pk)
+    # Only grade the card the form was showing -- a double-submit or a stale
+    # tab must not grade the next card in the queue.
+    if run.queue and str(run.queue[0]) == request.POST.get('card'):
+        card_id = run.queue.pop(0)
+        if request.POST.get('correct') == '1':
+            run.correct_count += 1
+        else:
+            run.wrong.append(card_id)
+        run.save()
+    return redirect('cards:topic_run', pk=pk)
 
 
 @login_required
-def quiz_exit(request):
-    if request.method == 'POST':
-        request.session.pop(SESSION_QUIZ_KEY, None)
-    return redirect('cards:list')
+def run_next_round(request, pk):
+    """Start the next round over only the cards missed in this one."""
+    if request.method != 'POST':
+        return redirect('cards:topic_run', pk=pk)
+    run = get_object_or_404(TopicRun, user=request.user, collection_id=pk)
+    if run.round_finished and run.wrong:
+        for field, value in _new_round(run.wrong).items():
+            setattr(run, field, value)
+        run.round += 1
+        run.save()
+    return redirect('cards:topic_run', pk=pk)
+
+
+@login_required
+def run_reset(request, pk):
+    """Throw away this topic's run progress (spaced-repetition progress is
+    untouched). With restart=1, immediately start a fresh round 1."""
+    if request.method != 'POST':
+        return redirect('cards:study_choose', pk=pk)
+    collection = get_object_or_404(Collection, pk=pk, owner=request.user)
+    TopicRun.objects.filter(user=request.user, collection=collection).delete()
+    if request.POST.get('restart') == '1':
+        return run_start(request, pk)
+    messages.info(request, f'Progress for "{collection.name}" reset.')
+    return redirect('cards:study_choose', pk=pk)

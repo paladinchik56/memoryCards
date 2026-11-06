@@ -7,10 +7,27 @@
     {% if collection.description %}
         <p>{{ collection.description }}</p>
     {% endif %}
-    <p>Visibility: {{ collection.get_visibility_display }}</p>
+    <form method="post" action="{% url 'cards:collection_set_visibility' collection.pk %}" class="icon-form">
+        {% csrf_token %}
+        <label>Visibility:
+            <select name="visibility" onchange="this.form.submit()">
+                {% for value, label in visibility_choices %}
+                    <option value="{{ value }}"{% if collection.visibility == value %} selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </label>
+        <noscript><button type="submit">Save</button></noscript>
+    </form>
 
     {% if collection.visibility != 'private' %}
-        <p>Share link: <code>{{ request.scheme }}://{{ request.get_host }}{% url 'cards:collection_view' collection.share_token %}</code></p>
+        {% with share_url=request.scheme|add:"://"|add:request.get_host|add:share_path %}
+        <p>Share link: <code id="share-link">{{ share_url }}</code>
+            <button type="button" onclick="navigator.clipboard.writeText(document.getElementById('share-link').textContent).then(() => { this.textContent = 'Copied ✓'; })">Copy</button>
+        </p>
+        {% endwith %}
+        {% if collection.visibility == 'unlisted' %}<p class="week-caption">Only people with this link can see it. It's not listed in the public library.</p>{% endif %}
+    {% else %}
+        <p class="week-caption">Only you can see this collection. Switch to "Unlisted (by link)" to share it with specific people.</p>
     {% endif %}
 
     <div class="cards-block">

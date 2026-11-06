@@ -4,7 +4,7 @@
 
 {% block content %}
     <h1>Sign up</h1>
-    <p>Enter a nickname, email and password — we'll send a confirmation code to your email. Your nickname is visible to your friends, and you can log in with either it or your email.</p>
+    <p>Enter a nickname, email and password — we'll send a confirmation code to your email. You can log in with either it or your email.</p>
     <form method="post">
         {% csrf_token %}
         {{ form.as_p }}

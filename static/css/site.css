@@ -373,3 +373,23 @@ details.tab[open] summary { color: var(--green); }
         margin-top: 0;
         font-size: 15px;
     }
+/* Topic filter on the review screen */
+.topic-filter {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 10px 14px;
+    margin-bottom: 16px;
+}
+.topic-filter summary { cursor: pointer; color: var(--text); }
+.topic-filter form { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; margin-top: 10px; }
+.topic-filter label { display: flex; align-items: center; gap: 6px; }
+
+/* Grade buttons: wrong on the left, right on the right (matches ←/→ keys) */
+#grade-form { justify-content: space-between; }
+#grade-form .grade-wrong { color: var(--orange); }
+#grade-form .grade-right { color: var(--green); }
+.key-hint { text-align: center; }
+@media (hover: none) { .key-hint { display: none; } }
+/* Buttons appear once the card is flipped; keep their space so nothing jumps. */
+#grade-form[hidden] { display: flex; visibility: hidden; }

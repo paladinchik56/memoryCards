@@ -6,13 +6,25 @@
     <h1>{{ collection.name }}</h1>
     <p>How do you want to study this topic?</p>
 
-    <form method="post" action="{% url 'cards:quiz_start' collection.pk %}">
+    <form method="post" action="{% url 'cards:run_start' collection.pk %}">
         {% csrf_token %}
-        <button type="submit" class="btn-start">Go through the whole topic</button>
+        <button type="submit" class="btn-start">
+            {% if not run %}Go through the whole topic
+            {% elif run.completed %}See result
+            {% else %}Continue: round {{ run.round }}, {{ run.queue|length }} left{% endif %}
+        </button>
     </form>
-    <p class="week-caption">A quick practice pass through every card — doesn't affect your review schedule.</p>
+    <p class="week-caption">All cards in a row; each next round only has the ones you missed. Not tied to time and doesn't affect your review schedule.</p>
 
-    <a href="{% url 'cards:review' %}?collection={{ collection.pk }}" class="btn-secondary-start">Only what's not learned yet</a>
+    {% if run %}
+        <form method="post" action="{% url 'cards:run_reset' collection.pk %}"
+              onsubmit="return confirm('Reset this topic\'s run progress? Your review schedule is not affected.');">
+            {% csrf_token %}
+            <button type="submit">Reset run progress</button>
+        </form>
+    {% endif %}
+
+    <a href="{% url 'cards:review' %}?collection={{ collection.pk }}" class="btn-secondary-start">Only what's due</a>
     <p class="week-caption">The regular spaced-repetition review, filtered to this topic.</p>
 
     <p><a href="{% url 'cards:study_topics' %}">Back to topics</a></p>

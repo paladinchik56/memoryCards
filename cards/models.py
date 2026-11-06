@@ -85,3 +85,41 @@ class ReviewLog(models.Model):
     def __str__(self):
         return f'{self.card_id} @ {self.reviewed_at}: {"correct" if self.was_correct else "incorrect"}'
 
+
+
+class TopicRun(models.Model):
+    """A "go through the whole topic" pass, separate from spaced repetition.
+
+    Never touches Card.stage/next_review_at and isn't time-based: the first
+    round queues every card of the topic; each next round queues only the
+    cards answered wrong in the previous one, until nothing is left. Kept in
+    the DB (one row per user+topic) so it survives logout and other devices,
+    and several topics can be in progress at once. Reset = delete the row.
+    """
+
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='topic_runs')
+    collection = models.ForeignKey(Collection, on_delete=models.CASCADE, related_name='runs')
+    round = models.PositiveSmallIntegerField(default=1)
+    queue = models.JSONField(default=list)        # card ids still to show this round, in order
+    wrong = models.JSONField(default=list)        # card ids missed this round -> next round
+    round_total = models.PositiveIntegerField(default=0)
+    correct_count = models.PositiveIntegerField(default=0)  # correct answers this round
+    started_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=['user', 'collection'], name='unique_topic_run_per_user'),
+        ]
+
+    @property
+    def round_finished(self):
+        return not self.queue
+
+    @property
+    def completed(self):
+        """Whole run done: the last round had no mistakes."""
+        return not self.queue and not self.wrong
+
+    def __str__(self):
+        return f'{self.user} / {self.collection} round {self.round}'
