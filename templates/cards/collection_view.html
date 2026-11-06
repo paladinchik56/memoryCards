@@ -12,6 +12,18 @@
 
     {% if is_owner %}
         <p><a href="{% url 'cards:collection_detail' collection.pk %}">Manage this collection</a></p>
+    {% elif cards %}
+        <form method="post" action="{% url 'cards:collection_take' collection.share_token %}" class="icon-form">
+            {% csrf_token %}
+            <select name="collection">
+                <option value="new">As my own collection «{{ collection.name }}»</option>
+                <option value="">No collection (just study them)</option>
+                {% for c in my_collections %}
+                    <option value="{{ c.pk }}">Into: {{ c.name }}</option>
+                {% endfor %}
+            </select>
+            <button type="submit">Add all {{ cards|length }} cards</button>
+        </form>
     {% endif %}
 
     <div class="cards-block">

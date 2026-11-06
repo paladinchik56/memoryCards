@@ -1,3 +1,5 @@
+import random
+
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db.models import Q
@@ -8,6 +10,7 @@ from django.utils.http import url_has_allowed_host_and_scheme
 
 from .forms import CardForm, CollectionForm
 from .models import Card, ReviewLog, Collection
+from .quotes import get_quote_of_the_day
 from .scheduler import MAX_STAGE, STAGE_LABELS, TEST_MODE_INTERVAL, schedule_next_review
 
 # Visibility levels a collection can be viewed at by someone other than its
@@ -15,15 +18,6 @@ from .scheduler import MAX_STAGE, STAGE_LABELS, TEST_MODE_INTERVAL, schedule_nex
 # are reachable only by their secret share-link (share_token) but not listed.
 # PRIVATE collections never appear here -- only their owner can see them.
 VIEWABLE_BY_OTHERS = [Collection.VISIBILITY_PUBLIC, Collection.VISIBILITY_UNLISTED]
-
-
-def _hero_message(due_count, total_cards):
-    if total_cards == 0:
-        return 'Add your first card to start learning!'
-    if due_count == 0:
-        return 'All cards reviewed — great work! 🎉'
-    word = 'card' if due_count == 1 else 'cards'
-    return f'Due for review today: {due_count} {word}'
 
 
 @login_required
@@ -51,10 +45,8 @@ def card_list(request):
     reviewed_this_week = ReviewLog.objects.filter(user=request.user, reviewed_at__gte=week_start).count()
     due_count = Card.objects.filter(user=request.user, next_review_at__lte=timezone.now()).count()
 
-    total_cards = len(cards)
-    not_started_count = sum(1 for card in cards if not card.is_reviewed)
     learned_count = sum(1 for card in cards if card.stage >= MAX_STAGE)
-    learned_pct = round(learned_count / total_cards * 100) if total_cards else 0
+    quote_text, quote_author = get_quote_of_the_day()
 
     return render(request, 'cards/card_list.html', {
         'form': form,
@@ -63,11 +55,9 @@ def card_list(request):
         'reviewed_today': reviewed_today,
         'reviewed_this_week': reviewed_this_week,
         'due_count': due_count,
-        'total_cards': total_cards,
-        'not_started_count': not_started_count,
         'learned_count': learned_count,
-        'learned_pct': learned_pct,
-        'hero_message': _hero_message(due_count, total_cards),
+        'quote_text': quote_text,
+        'quote_author': quote_author,
     })
 
 
@@ -155,6 +145,72 @@ def card_take(request, pk):
         messages.info(request, 'You already have a card with this question.')
 
     return redirect('cards:collection_view', token=source_card.collection.share_token)
+
+
+COLLECTION_TAKE_NEW = 'new'
+
+
+@login_required
+def collection_take(request, token):
+    """Copy every card of a collection the user can see into their own cards
+    in one go -- the bulk version of card_take, with the same rules: each
+    card becomes a new row for this user starting at stage 0, and questions
+    the user already has are skipped rather than duplicated.
+
+    POST `collection` picks where the copies land:
+      'new' (default) -- the user's own collection holding earlier copies
+                         from this source if there is one, otherwise a new
+                         private collection named after the source;
+      ''              -- no collection (straight into the study pool);
+      <pk>            -- one of the user's existing collections.
+    Taking the same collection again therefore only adds cards the owner
+    has added since.
+    """
+    collection = get_object_or_404(
+        Collection.objects.filter(Q(visibility__in=VIEWABLE_BY_OTHERS) | Q(owner=request.user)),
+        share_token=token,
+    )
+    if request.method != 'POST':
+        return redirect('cards:collection_view', token=token)
+
+    choice = request.POST.get('collection', COLLECTION_TAKE_NEW)
+    if choice == COLLECTION_TAKE_NEW:
+        earlier_copy = (
+            Card.objects.filter(user=request.user, source_collection=collection, collection__owner=request.user)
+            .values_list('collection_id', flat=True).first()
+        )
+        if earlier_copy:
+            target = Collection.objects.get(pk=earlier_copy)
+        else:
+            target = Collection.objects.create(
+                owner=request.user, name=collection.name, description=collection.description,
+            )
+    elif choice:
+        target = get_object_or_404(Collection, pk=choice, owner=request.user)
+    else:
+        target = None
+
+    existing = set(Card.objects.filter(user=request.user).values_list('question', flat=True))
+    new_cards = [
+        Card(
+            user=request.user, question=card.question, answer=card.answer,
+            collection=target, source_collection=collection,
+        )
+        for card in collection.cards.all()
+        if card.question not in existing
+    ]
+    Card.objects.bulk_create(new_cards)
+    skipped = collection.cards.count() - len(new_cards)
+
+    msg = f'Added {len(new_cards)} card(s)'
+    msg += f' to "{target.name}".' if target else ' without a collection.'
+    if skipped:
+        msg += f' Skipped {skipped} you already have.'
+    messages.success(request, msg)
+
+    if target:
+        return redirect('cards:collection_detail', pk=target.pk)
+    return redirect('cards:list')
 
 
 @login_required
@@ -358,3 +414,126 @@ def collection_view(request, token):
         'is_owner': is_owner,
         'my_collections': None if is_owner else Collection.objects.filter(owner=request.user),
     })
+
+
+SESSION_QUIZ_KEY = 'quiz'
+
+
+@login_required
+def study_topics(request):
+    """Topic picker: the user's own collections, each leading to
+    study_choose. "Add topics" sends them to the library to make/take more."""
+    collections = Collection.objects.filter(owner=request.user)
+    return render(request, 'cards/study_topics.html', {'collections': collections})
+
+
+@login_required
+def study_choose(request, pk):
+    """Ask how to study one topic: the whole thing (an ungraded quiz, see
+    quiz_start) or just what's not learned yet (the ordinary spaced-repetition
+    review, filtered to this collection -- same as the collection filter on
+    the review screen)."""
+    collection = get_object_or_404(Collection, pk=pk, owner=request.user)
+    return render(request, 'cards/study_choose.html', {'collection': collection})
+
+
+@login_required
+def quiz_start(request, pk):
+    """Start an ad-hoc, ungraded run through every card in one topic.
+
+    This deliberately never touches Card.stage/next_review_at or writes a
+    ReviewLog -- it's a practice pass, not a spaced-repetition session.
+    All of its state (which cards are left, which were missed) lives only
+    in the session, under SESSION_QUIZ_KEY.
+    """
+    if request.method != 'POST':
+        return redirect('cards:study_topics')
+
+    collection = get_object_or_404(Collection, pk=pk, owner=request.user)
+    card_ids = list(collection.cards.filter(user=request.user).values_list('pk', flat=True))
+    random.shuffle(card_ids)
+
+    request.session[SESSION_QUIZ_KEY] = {
+        'collection_id': collection.pk,
+        'collection_name': collection.name,
+        'queue': card_ids,
+        'wrong': [],
+        'total': len(card_ids),
+        'correct_count': 0,
+    }
+    return redirect('cards:quiz')
+
+
+@login_required
+def quiz(request):
+    state = request.session.get(SESSION_QUIZ_KEY)
+    if not state:
+        return redirect('cards:study_topics')
+
+    if state['queue']:
+        card = get_object_or_404(Card, pk=state['queue'][0], user=request.user)
+        return render(request, 'cards/quiz.html', {
+            'card': card,
+            'collection_name': state['collection_name'],
+            'remaining': len(state['queue']),
+            'total': state['total'],
+        })
+
+    # Queue empty -- this pass is done, show the summary/retry screen.
+    return render(request, 'cards/quiz.html', {
+        'finished': True,
+        'collection_name': state['collection_name'],
+        'correct_count': state['correct_count'],
+        'wrong_count': len(state['wrong']),
+        'total': state['total'],
+    })
+
+
+@login_required
+def quiz_grade(request):
+    """Mark the current quiz card right/wrong and advance -- session-only,
+    no Card/ReviewLog write (see quiz_start's docstring for why)."""
+    if request.method != 'POST':
+        return redirect('cards:quiz')
+
+    state = request.session.get(SESSION_QUIZ_KEY)
+    if not state or not state['queue']:
+        return redirect('cards:quiz')
+
+    card_id = state['queue'].pop(0)
+    if request.POST.get('correct') == '1':
+        state['correct_count'] += 1
+    else:
+        state['wrong'].append(card_id)
+    request.session[SESSION_QUIZ_KEY] = state
+
+    return redirect('cards:quiz')
+
+
+@login_required
+def quiz_retry(request):
+    """Start a new pass through only the cards missed in the previous one."""
+    if request.method != 'POST':
+        return redirect('cards:quiz')
+
+    state = request.session.get(SESSION_QUIZ_KEY)
+    if not state:
+        return redirect('cards:study_topics')
+
+    wrong = state['wrong']
+    request.session[SESSION_QUIZ_KEY] = {
+        'collection_id': state['collection_id'],
+        'collection_name': state['collection_name'],
+        'queue': wrong,
+        'wrong': [],
+        'total': len(wrong),
+        'correct_count': 0,
+    }
+    return redirect('cards:quiz')
+
+
+@login_required
+def quiz_exit(request):
+    if request.method == 'POST':
+        request.session.pop(SESSION_QUIZ_KEY, None)
+    return redirect('cards:list')

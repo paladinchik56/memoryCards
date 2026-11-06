@@ -1,0 +1,19 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ collection.name }}{% endblock %}
+
+{% block content %}
+    <h1>{{ collection.name }}</h1>
+    <p>How do you want to study this topic?</p>
+
+    <form method="post" action="{% url 'cards:quiz_start' collection.pk %}">
+        {% csrf_token %}
+        <button type="submit" class="btn-start">Go through the whole topic</button>
+    </form>
+    <p class="week-caption">A quick practice pass through every card — doesn't affect your review schedule.</p>
+
+    <a href="{% url 'cards:review' %}?collection={{ collection.pk }}" class="btn-secondary-start">Only what's not learned yet</a>
+    <p class="week-caption">The regular spaced-repetition review, filtered to this topic.</p>
+
+    <p><a href="{% url 'cards:study_topics' %}">Back to topics</a></p>
+{% endblock %}

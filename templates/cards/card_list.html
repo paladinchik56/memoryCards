@@ -5,44 +5,29 @@
 {% block content %}
 
 
-    <div class="hero">
-        <div class="hero-bubble">{{ hero_message }}</div>
-        <div class="hero-scene">
-            <svg viewBox="0 0 300 150" preserveAspectRatio="xMidYMid meet">
-                <ellipse cx="150" cy="98" rx="140" ry="48" fill="#dff3d3"/>
-                <polygon points="35,98 55,58 78,98" fill="#8a8fd8"/>
-                <polygon points="62,98 88,45 115,98" fill="#6b6fc4"/>
-                <polygon points="182,98 207,42 232,98" fill="#f2b544"/>
-                <polygon points="208,98 233,52 258,98" fill="#8a8fd8"/>
-                <circle cx="100" cy="84" r="9" fill="#e07a3f"/>
-                <circle cx="225" cy="86" r="8" fill="#e85fa0"/>
-                <rect x="28" y="93" width="5" height="9" rx="1" fill="#6b6fc4"/>
-                <rect x="265" y="90" width="5" height="11" rx="1" fill="#6b6fc4"/>
-            </svg>
-            <div class="hero-sun" title="Ready to review now">{{ due_count }}</div>
-            <div class="progress-ring" style="--pct: {{ learned_pct }}%;" title="Cards learned">
-                <span>{{ learned_count }}/{{ total_cards }}</span>
-            </div>
-        </div>
+    <div class="quote-card">
+        <p class="quote-text">“{{ quote_text }}”</p>
+        <p class="quote-author">{{ quote_author }}</p>
     </div>
 
     <div class="stats-row">
         <div class="stat">
-            <div class="stat-label" style="color: var(--blue)">Not started</div>
-            <div class="stat-value" style="color: var(--blue)">{{ not_started_count }}</div>
+            <div class="stat-label" style="color: var(--blue)">Due now</div>
+            <div class="stat-value" style="color: var(--blue)">{{ due_count }}</div>
         </div>
         <div class="stat">
-            <div class="stat-label" style="color: var(--green)">Reviewed today</div>
+            <div class="stat-label" style="color: var(--green)">Learned today</div>
             <div class="stat-value" style="color: var(--green)">{{ reviewed_today }}</div>
         </div>
         <div class="stat">
-            <div class="stat-label" style="color: var(--orange)">Learned</div>
+            <div class="stat-label" style="color: var(--orange)">Learned total</div>
             <div class="stat-value" style="color: var(--orange)">{{ learned_count }}</div>
         </div>
     </div>
     <p class="week-caption">Reviewed this week: {{ reviewed_this_week }}</p>
 
-    <a href="{% url 'cards:review' %}" class="btn-start">Start learning</a>
+    <a href="{% url 'cards:review' %}" class="btn-start">Blitz Learning</a>
+    <a href="{% url 'cards:study_topics' %}" class="btn-secondary-start">Study by topics</a>
 
     <div class="cards-block">
         <details class="cards-section" id="cards-section"{% if not cards %} open{% endif %}>

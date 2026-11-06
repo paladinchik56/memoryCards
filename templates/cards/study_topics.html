@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+
+{% block title %}Study by topics{% endblock %}
+
+{% block content %}
+    <h1>Study by topics</h1>
+    <p><a href="{% url 'cards:collections' %}">+ Add topics</a></p>
+
+    <div class="cards-block">
+        <div class="cards-table-wrap">
+            {% if collections %}
+                <table>
+                    <tr>
+                        <th>Topic</th>
+                        <th>Cards</th>
+                        <th></th>
+                    </tr>
+                    {% for collection in collections %}
+                        <tr>
+                            <td>{{ collection.name }}</td>
+                            <td>{{ collection.cards.count }}</td>
+                            <td><a href="{% url 'cards:study_choose' collection.pk %}">Study</a></td>
+                        </tr>
+                    {% endfor %}
+                </table>
+            {% else %}
+                <p>No topics yet. <a href="{% url 'cards:collections' %}">Create one</a>, or take cards from the <a href="{% url 'cards:library' %}">public library</a>.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <p><a href="{% url 'cards:list' %}">Back to card list</a></p>
+{% endblock %}

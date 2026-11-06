@@ -48,33 +48,30 @@
 {% if user.is_authenticated %}
     <nav class="bottombar">
         <a href="{% url 'cards:list' %}" class="tab{% if request.resolver_match.url_name == 'list' %} active{% endif %}">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                <rect x="4" y="6" width="12" height="15" rx="2"/>
-                <rect x="8" y="2" width="12" height="15" rx="2"/>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="square" stroke-linejoin="miter">
+                <path d="M13 2 4 14h6l-1 8 9-12h-6l1-8z"/>
             </svg>
             Learn
         </a>
         <a href="{% url 'cards:collections' %}" class="tab{% if request.resolver_match.url_name == 'collections' or request.resolver_match.url_name == 'library' or request.resolver_match.url_name == 'collection_detail' or request.resolver_match.url_name == 'collection_view' %} active{% endif %}">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
-                <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="square" stroke-linejoin="miter">
+                <rect x="3" y="7" width="14" height="14"/>
+                <rect x="7" y="3" width="14" height="14"/>
             </svg>
             Library
         </a>
         <a href="{% url 'friends' %}" class="tab{% if request.resolver_match.url_name == 'friends' %} active{% endif %}">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="9" cy="8" r="3.2"/>
-                <path d="M2.5 20c0-3.4 3-5.4 6.5-5.4s6.5 2 6.5 5.4"/>
-                <circle cx="17" cy="7" r="2.6"/>
-                <path d="M15.2 14.8c2.6.4 4.3 2.2 4.3 5.2"/>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="square" stroke-linejoin="miter">
+                <rect x="3" y="9" width="10" height="10" transform="rotate(45 8 14)"/>
+                <rect x="11" y="3" width="10" height="10" transform="rotate(45 16 8)"/>
             </svg>
             Friends
         </a>
         <details class="tab account-tab">
             <summary>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                    <circle cx="12" cy="8" r="4"/>
-                    <path d="M4 21c0-4 4-6 8-6s8 2 8 6"/>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="square" stroke-linejoin="miter">
+                    <path d="M12 2 20.5 7v10L12 22 3.5 17V7z"/>
+                    <circle cx="12" cy="12" r="3"/>
                 </svg>
                 Account
             </summary>
