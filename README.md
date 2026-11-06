@@ -49,6 +49,28 @@ Run the test suite with:
 python manage.py test
 ```
 
+## Mobile API
+
+JSON API for the (upcoming) offline-first mobile app, under `/api/`. Every call except login sends `Authorization: Token <token>`.
+
+| Method | Path | What |
+|---|---|---|
+| POST | `/api/auth/token/` | `{login, password}` (nickname or email) → `{token, user}` |
+| POST | `/api/auth/logout/` | revoke the token |
+| GET | `/api/me/` | current user |
+| GET | `/api/scheduler/` | the review interval ladder |
+| GET | `/api/library/` | public collections of other users |
+| GET | `/api/shared/<share_token>/` | one collection with its cards |
+| POST | `/api/shared/<share_token>/take/` | copy it: `{target: "new" \| null \| "<collection uuid>", cards?: [uuid]}` |
+| POST | `/api/sync/` | push local changes + pull server changes since `since` |
+
+Sync model (full contract in the `sync` docstring in `api/views.py`):
+- Every card, collection and review has a client-generated UUID, so the app can create them offline.
+- Progress is synced as **review events** (`card, correct, reviewed_at`), never as a stage number: the server replays them with the same scheduler as the website, idempotently by event UUID.
+- Card text and collections: the later edit wins (`content_updated_at` / `updated_at`); reviews don't count as edits.
+- Deletions travel as tombstones in `deleted`.
+- `cards/scheduler_vectors.json` is the shared contract for the interval ladder; the app's tests must check against it.
+
 ## Roadmap
 
 - [ ] Redesign the UI (current styling is functional, not polished)

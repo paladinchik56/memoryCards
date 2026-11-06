@@ -11,7 +11,8 @@ from django.utils.http import url_has_allowed_host_and_scheme, urlencode
 from .forms import CardForm, CollectionForm
 from .models import Card, Collection, ReviewLog, TopicRun
 from .quotes import get_quote_of_the_day
-from .scheduler import MAX_STAGE, STAGE_LABELS, TEST_MODE_INTERVAL, schedule_next_review
+from .scheduler import MAX_STAGE, STAGE_LABELS, TEST_MODE_INTERVAL
+from .services import apply_review, copy_cards, take_into_own_copy
 
 # Visibility levels a collection can be viewed at by someone other than its
 # owner: PUBLIC ones show up in the shared library listing; UNLISTED ones
@@ -67,7 +68,9 @@ def card_edit(request, pk):
     if request.method == 'POST':
         form = CardForm(request.POST, instance=card, user=request.user)
         if form.is_valid():
-            form.save()
+            card = form.save(commit=False)
+            card.content_updated_at = timezone.now()
+            card.save()
             return redirect('cards:list')
     else:
         form = CardForm(instance=card, user=request.user)
@@ -98,6 +101,7 @@ def card_set_collection(request, pk):
         card.collection = get_object_or_404(Collection, pk=collection_id, owner=request.user)
     else:
         card.collection = None
+    card.content_updated_at = timezone.now()
     card.save()
 
     return redirect('cards:list')
@@ -175,34 +179,15 @@ def collection_take(request, token):
 
     choice = request.POST.get('collection', COLLECTION_TAKE_NEW)
     if choice == COLLECTION_TAKE_NEW:
-        earlier_copy = (
-            Card.objects.filter(user=request.user, source_collection=collection, collection__owner=request.user)
-            .values_list('collection_id', flat=True).first()
-        )
-        if earlier_copy:
-            target = Collection.objects.get(pk=earlier_copy)
-        else:
-            target = Collection.objects.create(
-                owner=request.user, name=collection.name, description=collection.description,
-            )
+        target = take_into_own_copy(request.user, collection)
     elif choice:
         target = get_object_or_404(Collection, pk=choice, owner=request.user)
     else:
         target = None
 
-    existing = set(Card.objects.filter(user=request.user).values_list('question', flat=True))
-    new_cards = [
-        Card(
-            user=request.user, question=card.question, answer=card.answer,
-            collection=target, source_collection=collection,
-        )
-        for card in collection.cards.all()
-        if card.question not in existing
-    ]
-    Card.objects.bulk_create(new_cards)
-    skipped = collection.cards.count() - len(new_cards)
+    added, skipped = copy_cards(request.user, collection.cards.all(), collection, target)
 
-    msg = f'Added {len(new_cards)} card(s)'
+    msg = f'Added {added} card(s)'
     msg += f' to "{target.name}".' if target else ' without a collection.'
     if skipped:
         msg += f' Skipped {skipped} you already have.'
@@ -310,31 +295,8 @@ def review_grade(request, pk):
     card = get_object_or_404(Card, pk=pk, user=request.user)
     correct = request.POST.get('correct') == '1'
 
-    previous_stage = card.stage
-    previous_is_reviewed = card.is_reviewed
-    previous_next_review_at = card.next_review_at if previous_is_reviewed else None
-
     test_mode = request.session.get('test_mode', False)
-    new_stage, next_at = schedule_next_review(
-        card.stage, correct,
-        fixed_interval=TEST_MODE_INTERVAL if test_mode else None,
-    )
-
-    ReviewLog.objects.create(
-        card=card,
-        user=request.user,
-        was_correct=correct,
-        previous_stage=previous_stage,
-        new_stage=new_stage,
-        previous_is_reviewed=previous_is_reviewed,
-        previous_next_review_at=previous_next_review_at,
-        new_next_review_at=next_at,
-    )
-
-    card.stage = new_stage
-    card.next_review_at = next_at
-    card.is_reviewed = True
-    card.save()
+    apply_review(card, correct, fixed_interval=TEST_MODE_INTERVAL if test_mode else None)
 
     return _review_redirect(request)
 

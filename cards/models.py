@@ -26,7 +26,11 @@ class Collection(models.Model):
     description = models.TextField(max_length=700, blank=True)
     visibility = models.CharField(max_length=10, choices=VISIBILITY_CHOICES, default=VISIBILITY_PRIVATE)
     share_token = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
+    # Stable id shared with the mobile app (which creates rows offline, so it
+    # can't wait for the server's integer pk). Never exposed as a share link.
+    uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return self.name
@@ -41,8 +45,14 @@ class Card(models.Model):
     stage = models.PositiveSmallIntegerField(default=0)
     is_reviewed = models.BooleanField(default=False)
     next_review_at = models.DateTimeField(default=timezone.now)
+    uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    # Bumped on every save, including every review -- the sync "changed
+    # since" cursor. Question/answer/collection edits also set
+    # content_updated_at, so an offline edit is compared (last write wins)
+    # against the last *content* change, not against the last review.
     updated_at = models.DateTimeField(auto_now=True)
+    content_updated_at = models.DateTimeField(default=timezone.now)
     collection = models.ForeignKey(
     Collection, on_delete=models.SET_NULL, null=True, blank=True, related_name='cards',
     )
@@ -76,7 +86,11 @@ class ReviewLog(models.Model):
     previous_is_reviewed = models.BooleanField()
     previous_next_review_at = models.DateTimeField(null=True, blank=True)
     new_next_review_at = models.DateTimeField()
-    reviewed_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    # Settable (not auto_now_add): reviews done offline on the phone keep
+    # the time they actually happened.
+    reviewed_at = models.DateTimeField(default=timezone.now, db_index=True)
+    # Client-generated event id: pushing the same review twice is a no-op.
+    uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
 
     class Meta:
         ordering = ['-reviewed_at']
@@ -123,3 +137,19 @@ class TopicRun(models.Model):
 
     def __str__(self):
         return f'{self.user} / {self.collection} round {self.round}'
+
+
+class Tombstone(models.Model):
+    """Record that a card/collection was deleted, so devices that synced it
+    earlier learn to delete their local copy (see api sync)."""
+
+    KIND_CARD = 'card'
+    KIND_COLLECTION = 'collection'
+    KIND_TOPIC_RUN = 'topic_run'  # uuid = the run's collection uuid
+
+    # Plain id, not a FK: tombstones are also written while a whole user is
+    # being deleted (cascade), when a FK to that user would fail.
+    user_id = models.IntegerField(db_index=True)
+    kind = models.CharField(max_length=10, choices=[(KIND_CARD, 'Card'), (KIND_COLLECTION, 'Collection'), (KIND_TOPIC_RUN, 'Topic run')])
+    uuid = models.UUIDField()
+    deleted_at = models.DateTimeField(default=timezone.now, db_index=True)

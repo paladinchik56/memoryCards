@@ -749,3 +749,19 @@ class ReviewMultiTopicFilterTests(TestCase):
         bob = User.objects.create_user('bob', password='pw12345')
         foreign = Collection.objects.create(owner=bob, name='X')
         self.assertEqual(self._card(foreign.pk), self.card_a)
+
+
+class SchedulerContractTests(SimpleTestCase):
+    """cards/scheduler_vectors.json is what the mobile app is tested
+    against; the server's scheduler must keep matching it."""
+
+    def test_scheduler_matches_the_shared_vectors(self):
+        import json
+        from pathlib import Path
+        vectors = json.loads((Path(__file__).parent / 'scheduler_vectors.json').read_text())
+        self.assertEqual(vectors['intervals_seconds'], [int(i.total_seconds()) for i in STAGE_INTERVALS])
+        now = timezone.now()
+        for case in vectors['cases']:
+            new_stage, next_at = schedule_next_review(case['stage'], case['correct'], now=now)
+            self.assertEqual(new_stage, case['new_stage'], case)
+            self.assertEqual((next_at - now).total_seconds(), case['wait_seconds'], case)
