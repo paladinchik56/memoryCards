@@ -140,9 +140,9 @@ class SyncTests(ApiTestCase):
         ]
         data = self.sync(reviews=list(reversed(events)))  # order in the payload doesn't matter
         card = data['cards'][0]
-        self.assertEqual(card['stage'], 2)
+        self.assertEqual((card['stage'], card['correct_count']), (0, 2))
         self.card.refresh_from_db()
-        self.assertEqual(self.card.next_review_at, t0 + timedelta(minutes=5) + STAGE_INTERVALS[2])
+        self.assertEqual(self.card.next_review_at, t0 + timedelta(minutes=5) + STAGE_INTERVALS[0])
         self.assertEqual(ReviewLog.objects.filter(card=self.card).count(), 2)
 
     def test_pushing_the_same_review_twice_applies_it_once(self):
@@ -150,11 +150,11 @@ class SyncTests(ApiTestCase):
         self.sync(reviews=[event])
         self.sync(reviews=[event])
         self.card.refresh_from_db()
-        self.assertEqual(self.card.stage, 1)
+        self.assertEqual(self.card.correct_count, 1)
 
     def test_late_offline_review_never_moves_due_date_backwards(self):
-        # Web review now -> stage 1, due in 30 min. Phone pushes an older
-        # wrong answer from yesterday afterwards.
+        # Web review now -> due in 90 s. Phone pushes an older wrong answer
+        # from yesterday afterwards (a wrong answer alone would make it due at once).
         from cards.services import apply_review
         apply_review(self.card, True)
         self.card.refresh_from_db()
@@ -164,7 +164,7 @@ class SyncTests(ApiTestCase):
             'reviewed_at': iso(timezone.now() - timedelta(days=1)),
         }])
         self.card.refresh_from_db()
-        self.assertEqual(self.card.stage, 0)
+        self.assertEqual((self.card.stage, self.card.correct_count), (0, 1))
         self.assertEqual(self.card.next_review_at, due)
 
     def test_review_from_the_future_is_clamped_to_now(self):
@@ -190,7 +190,7 @@ class SyncTests(ApiTestCase):
         )
         self.assertEqual(data['rejected'], [])
         card = Card.objects.get(uuid=ku)
-        self.assertEqual((card.user, card.collection.uuid, card.stage), (self.alice, cu, 1))
+        self.assertEqual((card.user, card.collection.uuid, card.correct_count), (self.alice, cu, 1))
 
     def test_duplicate_question_is_rejected(self):
         data = self.sync(cards=[{'uuid': str(uuid.uuid4()), 'question': 'Hund', 'answer': 'x', 'content_updated_at': iso(timezone.now())}])
@@ -205,7 +205,7 @@ class SyncTests(ApiTestCase):
             'collection': str(self.col.uuid), 'content_updated_at': iso(edited_on_phone),
         }])
         self.card.refresh_from_db()
-        self.assertEqual((self.card.answer, self.card.stage), ('the dog', 1))
+        self.assertEqual((self.card.answer, self.card.correct_count), ('the dog', 1))
         stale = self.sync(cards=[{
             'uuid': str(self.card.uuid), 'question': 'Hund', 'answer': 'old',
             'collection': str(self.col.uuid), 'content_updated_at': iso(edited_on_phone - timedelta(hours=1)),

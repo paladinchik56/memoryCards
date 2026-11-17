@@ -26,7 +26,7 @@ from rest_framework.throttling import ScopedRateThrottle
 
 from accounts.models import get_display_name
 from cards.models import Card, Collection, ReviewLog, Tombstone, TopicRun
-from cards.scheduler import STAGE_INTERVALS
+from cards.scheduler import REQUIRED_CORRECT, STAGE_INTERVALS
 from cards.services import apply_review, copy_cards, take_into_own_copy
 
 VIEWABLE_BY_OTHERS = [Collection.VISIBILITY_PUBLIC, Collection.VISIBILITY_UNLISTED]
@@ -83,6 +83,7 @@ def _card_json(card):
         'answer': card.answer,
         'collection': str(card.collection.uuid) if card.collection_id else None,
         'stage': card.stage,
+        'correct_count': card.correct_count,
         'is_reviewed': card.is_reviewed,
         'next_review_at': _iso(card.next_review_at),
         'content_updated_at': _iso(card.content_updated_at),
@@ -141,8 +142,11 @@ def me(request):
 @api_view(['GET'])
 @permission_classes([AllowAny])
 def scheduler(request):
-    """The stage ladder, so the app can check its built-in copy is current."""
-    return Response({'intervals_seconds': [int(i.total_seconds()) for i in STAGE_INTERVALS]})
+    """The review rules, so the app can check its built-in copy is current."""
+    return Response({
+        'intervals_seconds': [int(i.total_seconds()) for i in STAGE_INTERVALS],
+        'required_correct': REQUIRED_CORRECT,
+    })
 
 
 # ---------------------------------------------------------------- library

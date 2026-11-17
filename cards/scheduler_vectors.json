@@ -1,85 +1,278 @@
 {
-  "_comment": "Contract for every client that schedules reviews (web + mobile). Generated from cards/scheduler.py; cards/tests.py checks the scheduler still matches it. Mobile app tests must check their implementation against the same file.",
+  "_comment": "Contract for every client that schedules reviews (web + mobile). Generated from cards/scheduler.py; cards/tests.py checks the scheduler still matches it, and the mobile app tests its port against the same file. wait_seconds = time until the next review (0 = due again right away, after a wrong answer).",
   "intervals_seconds": [
     90,
     1800,
     43200,
     172800,
+    604800,
     1209600,
-    5184000
+    2592000
+  ],
+  "required_correct": [
+    3,
+    3,
+    3,
+    2,
+    2,
+    2
   ],
   "cases": [
     {
       "stage": 0,
+      "correct_count": 0,
+      "correct": true,
+      "new_stage": 0,
+      "new_correct_count": 1,
+      "wait_seconds": 90
+    },
+    {
+      "stage": 0,
+      "correct_count": 0,
+      "correct": false,
+      "new_stage": 0,
+      "new_correct_count": 0,
+      "wait_seconds": 0
+    },
+    {
+      "stage": 0,
+      "correct_count": 1,
+      "correct": true,
+      "new_stage": 0,
+      "new_correct_count": 2,
+      "wait_seconds": 90
+    },
+    {
+      "stage": 0,
+      "correct_count": 1,
+      "correct": false,
+      "new_stage": 0,
+      "new_correct_count": 1,
+      "wait_seconds": 0
+    },
+    {
+      "stage": 0,
+      "correct_count": 2,
       "correct": true,
       "new_stage": 1,
+      "new_correct_count": 0,
       "wait_seconds": 1800
     },
     {
       "stage": 0,
+      "correct_count": 2,
       "correct": false,
       "new_stage": 0,
-      "wait_seconds": 90
+      "new_correct_count": 2,
+      "wait_seconds": 0
     },
     {
       "stage": 1,
+      "correct_count": 0,
       "correct": true,
-      "new_stage": 2,
-      "wait_seconds": 43200
-    },
-    {
-      "stage": 1,
-      "correct": false,
-      "new_stage": 0,
-      "wait_seconds": 90
-    },
-    {
-      "stage": 2,
-      "correct": true,
-      "new_stage": 3,
-      "wait_seconds": 172800
-    },
-    {
-      "stage": 2,
-      "correct": false,
       "new_stage": 1,
+      "new_correct_count": 1,
       "wait_seconds": 1800
     },
     {
-      "stage": 3,
-      "correct": true,
-      "new_stage": 4,
-      "wait_seconds": 1209600
+      "stage": 1,
+      "correct_count": 0,
+      "correct": false,
+      "new_stage": 1,
+      "new_correct_count": 0,
+      "wait_seconds": 0
     },
     {
-      "stage": 3,
+      "stage": 1,
+      "correct_count": 1,
+      "correct": true,
+      "new_stage": 1,
+      "new_correct_count": 2,
+      "wait_seconds": 1800
+    },
+    {
+      "stage": 1,
+      "correct_count": 1,
       "correct": false,
+      "new_stage": 1,
+      "new_correct_count": 1,
+      "wait_seconds": 0
+    },
+    {
+      "stage": 1,
+      "correct_count": 2,
+      "correct": true,
       "new_stage": 2,
+      "new_correct_count": 0,
       "wait_seconds": 43200
     },
     {
-      "stage": 4,
-      "correct": true,
-      "new_stage": 5,
-      "wait_seconds": 5184000
+      "stage": 1,
+      "correct_count": 2,
+      "correct": false,
+      "new_stage": 1,
+      "new_correct_count": 2,
+      "wait_seconds": 0
     },
     {
-      "stage": 4,
+      "stage": 2,
+      "correct_count": 0,
+      "correct": true,
+      "new_stage": 2,
+      "new_correct_count": 1,
+      "wait_seconds": 43200
+    },
+    {
+      "stage": 2,
+      "correct_count": 0,
       "correct": false,
+      "new_stage": 2,
+      "new_correct_count": 0,
+      "wait_seconds": 0
+    },
+    {
+      "stage": 2,
+      "correct_count": 1,
+      "correct": true,
+      "new_stage": 2,
+      "new_correct_count": 2,
+      "wait_seconds": 43200
+    },
+    {
+      "stage": 2,
+      "correct_count": 1,
+      "correct": false,
+      "new_stage": 2,
+      "new_correct_count": 1,
+      "wait_seconds": 0
+    },
+    {
+      "stage": 2,
+      "correct_count": 2,
+      "correct": true,
       "new_stage": 3,
+      "new_correct_count": 0,
       "wait_seconds": 172800
     },
     {
-      "stage": 5,
+      "stage": 2,
+      "correct_count": 2,
+      "correct": false,
+      "new_stage": 2,
+      "new_correct_count": 2,
+      "wait_seconds": 0
+    },
+    {
+      "stage": 3,
+      "correct_count": 0,
+      "correct": true,
+      "new_stage": 3,
+      "new_correct_count": 1,
+      "wait_seconds": 172800
+    },
+    {
+      "stage": 3,
+      "correct_count": 0,
+      "correct": false,
+      "new_stage": 3,
+      "new_correct_count": 0,
+      "wait_seconds": 0
+    },
+    {
+      "stage": 3,
+      "correct_count": 1,
+      "correct": true,
+      "new_stage": 4,
+      "new_correct_count": 0,
+      "wait_seconds": 604800
+    },
+    {
+      "stage": 3,
+      "correct_count": 1,
+      "correct": false,
+      "new_stage": 3,
+      "new_correct_count": 1,
+      "wait_seconds": 0
+    },
+    {
+      "stage": 4,
+      "correct_count": 0,
+      "correct": true,
+      "new_stage": 4,
+      "new_correct_count": 1,
+      "wait_seconds": 604800
+    },
+    {
+      "stage": 4,
+      "correct_count": 0,
+      "correct": false,
+      "new_stage": 4,
+      "new_correct_count": 0,
+      "wait_seconds": 0
+    },
+    {
+      "stage": 4,
+      "correct_count": 1,
       "correct": true,
       "new_stage": 5,
-      "wait_seconds": 5184000
+      "new_correct_count": 0,
+      "wait_seconds": 1209600
+    },
+    {
+      "stage": 4,
+      "correct_count": 1,
+      "correct": false,
+      "new_stage": 4,
+      "new_correct_count": 1,
+      "wait_seconds": 0
     },
     {
       "stage": 5,
-      "correct": false,
-      "new_stage": 4,
+      "correct_count": 0,
+      "correct": true,
+      "new_stage": 5,
+      "new_correct_count": 1,
       "wait_seconds": 1209600
+    },
+    {
+      "stage": 5,
+      "correct_count": 0,
+      "correct": false,
+      "new_stage": 5,
+      "new_correct_count": 0,
+      "wait_seconds": 0
+    },
+    {
+      "stage": 5,
+      "correct_count": 1,
+      "correct": true,
+      "new_stage": 6,
+      "new_correct_count": 0,
+      "wait_seconds": 2592000
+    },
+    {
+      "stage": 5,
+      "correct_count": 1,
+      "correct": false,
+      "new_stage": 5,
+      "new_correct_count": 1,
+      "wait_seconds": 0
+    },
+    {
+      "stage": 6,
+      "correct_count": 0,
+      "correct": true,
+      "new_stage": 6,
+      "new_correct_count": 0,
+      "wait_seconds": 2592000
+    },
+    {
+      "stage": 6,
+      "correct_count": 0,
+      "correct": false,
+      "new_stage": 6,
+      "new_correct_count": 0,
+      "wait_seconds": 0
     }
   ]
 }

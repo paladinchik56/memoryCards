@@ -32,7 +32,10 @@ SECRET_KEY = os.environ.get(
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+# Comma-separated, e.g. DJANGO_ALLOWED_HOSTS="192.168.0.65,localhost" so a phone
+# on the same Wi-Fi can reach the dev server. Empty = Django's DEBUG default
+# (localhost only).
+ALLOWED_HOSTS = [h.strip() for h in os.environ.get('DJANGO_ALLOWED_HOSTS', '').split(',') if h.strip()]
 
 
 # Application definition

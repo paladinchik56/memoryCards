@@ -7,14 +7,14 @@ from .scheduler import schedule_next_review
 
 
 def apply_review(card, correct, reviewed_at=None, event_uuid=None, fixed_interval=None):
-    """Grade `card` once: move it along the stage ladder (scheduler.py, the
-    rule itself is unchanged) and append a ReviewLog row.
+    """Grade `card` once with the scheduler (scheduler.py) and append a
+    ReviewLog row.
 
     `reviewed_at` lets an offline review from the phone keep the time it
     happened; the next review is scheduled from that moment. If the card has
     already been reviewed *later* than that elsewhere (web while the phone
-    was offline), the stage still moves one step but the due date never
-    goes backwards. `event_uuid` makes a pushed review idempotent: the same
+    was offline), the answer still counts but the due date never goes
+    backwards. `event_uuid` makes a pushed review idempotent: the same
     event sent twice is applied once. Returns the new ReviewLog, or None if
     the event was already applied.
     """
@@ -24,10 +24,13 @@ def apply_review(card, correct, reviewed_at=None, event_uuid=None, fixed_interva
         return None
 
     previous_stage = card.stage
+    previous_correct_count = card.correct_count
     previous_is_reviewed = card.is_reviewed
     previous_next_review_at = card.next_review_at if previous_is_reviewed else None
 
-    new_stage, next_at = schedule_next_review(card.stage, correct, now=reviewed_at, fixed_interval=fixed_interval)
+    new_stage, new_count, next_at = schedule_next_review(
+        card.stage, card.correct_count, correct, now=reviewed_at, fixed_interval=fixed_interval,
+    )
     reviewed_later = ReviewLog.objects.filter(card=card, reviewed_at__gt=reviewed_at).exists()
     if reviewed_later and card.next_review_at > next_at:
         next_at = card.next_review_at
@@ -39,6 +42,8 @@ def apply_review(card, correct, reviewed_at=None, event_uuid=None, fixed_interva
         was_correct=correct,
         previous_stage=previous_stage,
         new_stage=new_stage,
+        previous_correct_count=previous_correct_count,
+        new_correct_count=new_count,
         previous_is_reviewed=previous_is_reviewed,
         previous_next_review_at=previous_next_review_at,
         new_next_review_at=next_at,
@@ -46,9 +51,10 @@ def apply_review(card, correct, reviewed_at=None, event_uuid=None, fixed_interva
         **extra,
     )
     card.stage = new_stage
+    card.correct_count = new_count
     card.next_review_at = next_at
     card.is_reviewed = True
-    card.save(update_fields=['stage', 'next_review_at', 'is_reviewed', 'updated_at'])
+    card.save(update_fields=['stage', 'correct_count', 'next_review_at', 'is_reviewed', 'updated_at'])
     return log
 
 

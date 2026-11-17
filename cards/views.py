@@ -8,6 +8,7 @@ from django.urls import reverse
 from django.utils import timezone
 from django.utils.http import url_has_allowed_host_and_scheme, urlencode
 
+from . import blitz
 from .forms import CardForm, CollectionForm
 from .models import Card, Collection, ReviewLog, TopicRun
 from .quotes import get_quote_of_the_day
@@ -265,7 +266,14 @@ def review(request):
             topic_q |= Q(collection__isnull=True)
         cards = cards.filter(topic_q)
 
-    card = cards.order_by('next_review_at').first()
+    now = timezone.now()
+    state = request.session.get(SESSION_BLITZ_KEY) or blitz.new_state()
+    due = list(cards)
+    card = next((c for c in due if c.pk == state.get('current')), None)
+    if card is None:
+        card = blitz.choose_next(due, now, state)
+        state['current'] = card.pk if card else None
+        request.session[SESSION_BLITZ_KEY] = state
     has_history = ReviewLog.objects.filter(user=request.user).exists()
     return render(request, 'cards/review.html', {
         'card': card,
@@ -278,6 +286,9 @@ def review(request):
         'topic_query': _topic_query(selected, include_none),
         'form': form,
     })
+
+
+SESSION_BLITZ_KEY = 'blitz'
 
 
 def _review_redirect(request):
@@ -297,6 +308,8 @@ def review_grade(request, pk):
 
     test_mode = request.session.get('test_mode', False)
     apply_review(card, correct, fixed_interval=TEST_MODE_INTERVAL if test_mode else None)
+    state = request.session.get(SESSION_BLITZ_KEY) or blitz.new_state()
+    request.session[SESSION_BLITZ_KEY] = blitz.after_answer(state, card.pk, correct)
 
     return _review_redirect(request)
 
@@ -310,6 +323,7 @@ def review_undo(request):
     if last_log:
         card = last_log.card
         card.stage = last_log.previous_stage
+        card.correct_count = last_log.previous_correct_count
         card.is_reviewed = last_log.previous_is_reviewed
         card.next_review_at = last_log.previous_next_review_at or timezone.now()
         card.save()

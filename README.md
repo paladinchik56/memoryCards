@@ -8,7 +8,7 @@ A spaced-repetition flashcard app built with Django. Create cards, review them o
 
 ## Features
 
-- **Spaced repetition** — each card moves along a fixed ladder of review intervals (90 seconds → 2 months); a correct answer advances it, a wrong one steps it back.
+- **Spaced repetition** — each card climbs a ladder of review intervals (90 seconds → 1 month) after 2–3 correct answers per stage. A wrong answer takes nothing away; the card just comes back 5–6 cards later in the same session.
 - **Flip-card review** — click the card (or answer it) to reveal the back, in a real 3D flip.
 - **Collections** — group your cards into named collections with three visibility levels: private, unlisted (share by link), or public (listed in the shared library).
 - **Shared library** — browse other users' public collections and copy ("take") individual cards into your own, starting fresh at stage 0.
@@ -53,6 +53,10 @@ Run the test suite with:
 ```bash
 python manage.py test
 ```
+
+## Mobile app
+
+Prototype in [`mobile/`](mobile/) (Expo Go for now) — see [`mobile/README.md`](mobile/README.md).
 
 ## Mobile API
 

@@ -43,6 +43,8 @@ class Card(models.Model):
     question = models.TextField()
     answer = models.TextField()
     stage = models.PositiveSmallIntegerField(default=0)
+    # Correct answers collected on the current stage (see scheduler.py).
+    correct_count = models.PositiveSmallIntegerField(default=0)
     is_reviewed = models.BooleanField(default=False)
     next_review_at = models.DateTimeField(default=timezone.now)
     uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
@@ -83,6 +85,8 @@ class ReviewLog(models.Model):
     was_correct = models.BooleanField()
     previous_stage = models.PositiveSmallIntegerField()
     new_stage = models.PositiveSmallIntegerField()
+    previous_correct_count = models.PositiveSmallIntegerField(default=0)
+    new_correct_count = models.PositiveSmallIntegerField(default=0)
     previous_is_reviewed = models.BooleanField()
     previous_next_review_at = models.DateTimeField(null=True, blank=True)
     new_next_review_at = models.DateTimeField()

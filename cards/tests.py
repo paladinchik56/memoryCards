@@ -8,92 +8,123 @@ from django.utils import timezone
 from .models import Card, Collection, ReviewLog, TopicRun
 from .progress import LEVEL_SIZE, get_learned_count, get_user_level, get_user_progress
 from .quotes import QUOTES, get_quote_of_the_day
+from . import blitz
 from .scheduler import (
     MAX_STAGE,
+    REQUIRED_CORRECT,
     STAGE_INTERVALS,
     STAGE_INTERVALS_TEST,
-    next_stage,
+    next_state,
     schedule_next_review,
 )
 
 
-class NextStageTests(SimpleTestCase):
-    def test_correct_answer_advances_one_stage(self):
-        self.assertEqual(next_stage(0, correct=True), 1)
-        self.assertEqual(next_stage(3, correct=True), 4)
+class NextStateTests(SimpleTestCase):
+    """The rules from description/open-decisions.md #16-17."""
 
-    def test_incorrect_answer_moves_back_one_stage(self):
-        self.assertEqual(next_stage(5, correct=False), 4)
-        self.assertEqual(next_stage(2, correct=False), 1)
+    def test_correct_answers_collect_until_the_stage_requirement(self):
+        self.assertEqual(next_state(0, 0, True), (0, 1))
+        self.assertEqual(next_state(0, 1, True), (0, 2))
+        self.assertEqual(next_state(0, 2, True), (1, 0))  # 3 needed on short stages
 
-    def test_incorrect_answer_does_not_reset_to_start(self):
-        # At a high stage, an incorrect answer should only move the card
-        # back by one stage, not reset it all the way to the beginning.
-        new_stage = next_stage(4, correct=False)
-        self.assertEqual(new_stage, 3)
-        self.assertNotEqual(new_stage, 0)
+    def test_long_stages_need_two(self):
+        self.assertEqual(next_state(3, 0, True), (3, 1))
+        self.assertEqual(next_state(3, 1, True), (4, 0))
+        self.assertEqual(REQUIRED_CORRECT, [3, 3, 3, 2, 2, 2])
 
-    def test_stage_cannot_exceed_max(self):
-        self.assertEqual(next_stage(MAX_STAGE, correct=True), MAX_STAGE)
+    def test_wrong_answer_changes_nothing(self):
+        for stage, count in [(0, 0), (2, 2), (5, 1), (MAX_STAGE, 0)]:
+            self.assertEqual(next_state(stage, count, False), (stage, count))
 
-    def test_stage_cannot_go_below_zero(self):
-        self.assertEqual(next_stage(0, correct=False), 0)
+    def test_max_stage_is_sticky(self):
+        self.assertEqual(next_state(MAX_STAGE, 0, True), (MAX_STAGE, 0))
+
+    def test_ladder(self):
+        self.assertEqual(
+            [int(i.total_seconds()) for i in STAGE_INTERVALS],
+            [90, 1800, 43200, 172800, 604800, 1209600, 2592000],
+        )
 
 
 class ScheduleNextReviewTests(SimpleTestCase):
-    def test_uses_real_intervals_by_default(self):
+    def test_correct_answer_waits_the_interval_of_the_resulting_stage(self):
         now = timezone.now()
-        new_stage, next_at = schedule_next_review(0, correct=True, now=now)
-        self.assertEqual(new_stage, 1)
-        self.assertEqual(next_at, now + STAGE_INTERVALS[1])
+        self.assertEqual(schedule_next_review(0, 0, True, now=now), (0, 1, now + STAGE_INTERVALS[0]))
+        self.assertEqual(schedule_next_review(0, 2, True, now=now), (1, 0, now + STAGE_INTERVALS[1]))
 
-    def test_can_use_shortened_test_intervals(self):
+    def test_wrong_answer_is_due_right_away(self):
         now = timezone.now()
-        new_stage, next_at = schedule_next_review(
-            0, correct=True, now=now, intervals=STAGE_INTERVALS_TEST,
-        )
-        self.assertEqual(new_stage, 1)
-        self.assertEqual(next_at, now + timedelta(seconds=2))
+        self.assertEqual(schedule_next_review(6, 0, False, now=now), (6, 0, now))
 
-    def test_full_cycle_with_a_mistake_using_test_intervals(self):
-        """Walk the whole ladder on compressed intervals with one mistake."""
+    def test_fixed_interval_only_overrides_the_wait(self):
         now = timezone.now()
-        stage = 0
+        stage, count, at = schedule_next_review(1, 2, True, now=now, fixed_interval=timedelta(seconds=5))
+        self.assertEqual((stage, count, at), (2, 0, now + timedelta(seconds=5)))
 
-        # 4 correct answers in a row: 0 -> 1 -> 2 -> 3 -> 4
-        for _ in range(4):
-            stage, now = schedule_next_review(
-                stage, correct=True, now=now, intervals=STAGE_INTERVALS_TEST,
-            )
-        self.assertEqual(stage, 4)
-
-        # a mistake at stage 4 moves back to the last interval (3), not to 0
-        stage, now = schedule_next_review(
-            stage, correct=False, now=now, intervals=STAGE_INTERVALS_TEST,
-        )
-        self.assertEqual(stage, 3)
-
-        # correct answers again should reach the end of the ladder
-        for _ in range(20):
-            stage, now = schedule_next_review(
-                stage, correct=True, now=now, intervals=STAGE_INTERVALS_TEST,
-            )
-        self.assertEqual(stage, len(STAGE_INTERVALS_TEST) - 1)
-
-    def test_fixed_interval_overrides_stage_interval_but_not_stage_progression(self):
+    def test_full_ladder_takes_the_expected_number_of_answers(self):
         now = timezone.now()
+        stage, count, answers = 0, 0, 0
+        while stage < MAX_STAGE:
+            stage, count, now = schedule_next_review(stage, count, True, now=now, intervals=STAGE_INTERVALS_TEST)
+            answers += 1
+            if answers % 4 == 0:  # mistakes along the way change nothing
+                stage, count, now = schedule_next_review(stage, count, False, now=now, intervals=STAGE_INTERVALS_TEST)
+        self.assertEqual(answers, sum(REQUIRED_CORRECT))
 
-        new_stage, next_at = schedule_next_review(
-            0, correct=True, now=now, fixed_interval=timedelta(seconds=5),
-        )
-        self.assertEqual(new_stage, 1)
-        self.assertEqual(next_at, now + timedelta(seconds=5))
 
-        new_stage, next_at = schedule_next_review(
-            3, correct=False, now=now, fixed_interval=timedelta(seconds=5),
-        )
-        self.assertEqual(new_stage, 2)
-        self.assertEqual(next_at, now + timedelta(seconds=5))
+class BlitzOrderTests(SimpleTestCase):
+    """cards/blitz.py: random, overdue first, comeback after 5-6 cards."""
+
+    class C:
+        def __init__(self, pk, stage=0, late=timedelta(0)):
+            self.pk, self.stage = pk, stage
+            self.next_review_at = timezone.now() - late
+
+    def test_badly_overdue_cards_go_first(self):
+        import random as r
+        now = timezone.now()
+        fresh = [self.C(i, stage=6, late=timedelta(hours=1)) for i in range(10)]
+        overdue = self.C(99, stage=1, late=timedelta(hours=1))  # 2 intervals late
+        for seed in range(20):
+            pick = blitz.choose_next(fresh + [overdue], now, blitz.new_state(), rng=r.Random(seed))
+            self.assertEqual(pick.pk, 99)
+
+    def test_order_is_random_among_equals(self):
+        import random as r
+        now = timezone.now()
+        cards = [self.C(i) for i in range(20)]
+        picks = {blitz.choose_next(cards, now, blitz.new_state(), rng=r.Random(s)).pk for s in range(30)}
+        self.assertGreater(len(picks), 5)
+
+    def test_never_the_same_card_twice_in_a_row(self):
+        now = timezone.now()
+        cards = [self.C(1), self.C(2)]
+        state = blitz.after_answer(blitz.new_state(), 1, True)
+        for _ in range(10):
+            self.assertEqual(blitz.choose_next(cards, now, state).pk, 2)
+
+    def test_wrong_card_comes_back_after_five_or_six_others(self):
+        import random as r
+        rng = r.Random(1)
+        now = timezone.now()
+        cards = [self.C(i) for i in range(1, 20)]
+        state = blitz.after_answer(blitz.new_state(), 1, False, rng=rng)
+        gap = 0
+        while True:
+            card = blitz.choose_next(cards, now, state, rng=rng)
+            if card.pk == 1:
+                break
+            gap += 1
+            state = blitz.after_answer(state, card.pk, True, rng=rng)
+        self.assertIn(gap, (5, 6))
+
+    def test_wrong_card_comes_back_sooner_when_few_cards_left(self):
+        now = timezone.now()
+        cards = [self.C(1), self.C(2)]
+        state = blitz.after_answer(blitz.new_state(), 1, False)
+        self.assertEqual(blitz.choose_next(cards, now, state).pk, 2)
+        state = blitz.after_answer(state, 2, True)
+        self.assertEqual(blitz.choose_next(cards, now, state).pk, 1)
 
 
 class UserProgressTests(TestCase):
@@ -731,11 +762,11 @@ class ReviewMultiTopicFilterTests(TestCase):
         return self.client.get(reverse('cards:review'), {'collection': list(values)}).context['card']
 
     def test_several_topics_at_once(self):
-        self.assertEqual(self._card(self.b.pk, self.c.pk), self.card_c)
+        self.assertIn(self._card(self.b.pk, self.c.pk), [self.card_b, self.card_c])
 
     def test_no_collection_option(self):
         self.assertEqual(self._card('none'), self.card_none)
-        self.assertEqual(self._card('none', self.b.pk), self.card_none)
+        self.assertIn(self._card('none', self.b.pk), [self.card_none, self.card_b])
 
     def test_grade_keeps_the_filter(self):
         response = self.client.post(
@@ -748,7 +779,7 @@ class ReviewMultiTopicFilterTests(TestCase):
     def test_foreign_collection_ids_are_ignored(self):
         bob = User.objects.create_user('bob', password='pw12345')
         foreign = Collection.objects.create(owner=bob, name='X')
-        self.assertEqual(self._card(foreign.pk), self.card_a)
+        self.assertIn(self._card(foreign.pk), [self.card_a, self.card_b, self.card_c, self.card_none])  # = no filter
 
 
 class SchedulerContractTests(SimpleTestCase):
@@ -760,8 +791,22 @@ class SchedulerContractTests(SimpleTestCase):
         from pathlib import Path
         vectors = json.loads((Path(__file__).parent / 'scheduler_vectors.json').read_text())
         self.assertEqual(vectors['intervals_seconds'], [int(i.total_seconds()) for i in STAGE_INTERVALS])
+        self.assertEqual(vectors['required_correct'], REQUIRED_CORRECT)
         now = timezone.now()
         for case in vectors['cases']:
-            new_stage, next_at = schedule_next_review(case['stage'], case['correct'], now=now)
-            self.assertEqual(new_stage, case['new_stage'], case)
+            stage, count, next_at = schedule_next_review(case['stage'], case['correct_count'], case['correct'], now=now)
+            self.assertEqual((stage, count), (case['new_stage'], case['new_correct_count']), case)
             self.assertEqual((next_at - now).total_seconds(), case['wait_seconds'], case)
+
+
+class SeedElectricalTests(TestCase):
+    def test_seed_is_public_has_30_cards_and_is_idempotent(self):
+        from django.core.management import call_command
+        from accounts.models import Profile
+        user = User.objects.create_user('a@example.com', password='pw')
+        Profile.objects.create(user=user, nickname='admin')
+        call_command('seed_electrical', stdout=open('/dev/null', 'w'))
+        call_command('seed_electrical', stdout=open('/dev/null', 'w'))
+        topic = Collection.objects.get(owner=user, name='Электротехника')
+        self.assertEqual(topic.visibility, Collection.VISIBILITY_PUBLIC)
+        self.assertEqual(topic.cards.count(), 30)
