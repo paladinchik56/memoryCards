@@ -1,6 +1,8 @@
 # Cards 📇
 
-A spaced-repetition flashcard app built with Django. Create cards, review them on a schedule that adapts to how well you know each one, organize them into shareable collections, and track progress against friends.
+**English** · [Русский](README.ru.md)
+
+A spaced-repetition flashcard app built with Django. Create cards, review them on a schedule that adapts to how well you know each one, organize them into shareable collections, and study offline on your phone (mobile app in progress).
 
 > **Status: work in progress.** The feature set below is functional and tested, but the visual design is still the rough first pass. The plan is to redesign the UI properly, then cut a proper release.
 
@@ -10,8 +12,8 @@ A spaced-repetition flashcard app built with Django. Create cards, review them o
 - **Flip-card review** — click the card (or answer it) to reveal the back, in a real 3D flip.
 - **Collections** — group your cards into named collections with three visibility levels: private, unlisted (share by link), or public (listed in the shared library).
 - **Shared library** — browse other users' public collections and copy ("take") individual cards into your own, starting fresh at stage 0.
-- **Friends & progress** — add friends by nickname or email, see their current level based on how many cards they've mastered.
-- **Nickname or email login** — register with a nickname (used for friends/sharing) and sign in with either it or your email.
+- **Topic runs** — go through a whole collection in rounds: each next round only has the cards you missed. Separate from the review schedule; progress is saved.
+- **Nickname or email login** — register with a nickname (shown as the author of shared collections) and sign in with either it or your email.
 - **Dark mode** — toggle in the top bar, remembered across visits.
 - **Test mode** — a toggle that compresses review intervals to seconds, for trying out the whole scheduling flow without waiting.
 
@@ -21,11 +23,14 @@ A spaced-repetition flashcard app built with Django. Create cards, review them o
 |---|---|
 | ![Card list, light theme](docs/screenshots/cards-light.png) | ![Card list, dark theme](docs/screenshots/cards-dark.png) |
 | ![Review — question side](docs/screenshots/review-question.png) | ![Review — answer side, after flipping](docs/screenshots/review-answer.png) |
-| ![Friends and progress](docs/screenshots/friends.png) | ![Public library](docs/screenshots/library.png) |
+| ![Public library](docs/screenshots/library.png) | |
 
 ## Tech stack
 
-Django 6.1, SQLite, server-rendered templates with vanilla CSS/JS (no frontend framework, no build step).
+- **Server:** Django 6.1, Django REST Framework, SQLite (PostgreSQL planned for production), server-rendered templates with vanilla CSS/JS.
+- **Mobile (in progress, `mobile/`):** Expo + React Native, TypeScript, local SQLite, offline-first sync with the server.
+
+Product spec and design notes (in Russian) live in [`description/`](description/).
 
 ## Getting started
 
@@ -34,7 +39,7 @@ git clone https://github.com/paladinchik56/memoryCards.git
 cd memoryCards
 python -m venv .venv
 source .venv/bin/activate        # .venv\Scripts\activate on Windows
-pip install -r requirements.txt  # or: pip install django
+pip install -r requirements.txt
 python manage.py migrate
 python manage.py runserver
 ```
@@ -73,5 +78,7 @@ Sync model (full contract in the `sync` docstring in `api/views.py`):
 
 ## Roadmap
 
+- [ ] Mobile app (Android first, then iOS)
 - [ ] Redesign the UI (current styling is functional, not polished)
+- [ ] Interface translations (en, ru; later de, es)
 - [ ] First tagged release
