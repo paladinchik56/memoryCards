@@ -1,6 +1,8 @@
 /**
- * The study card: tap to flip; once the answer shows, swipe right (right)
- * or left (wrong), or use the buttons. Shared by the blitz and topic study.
+ * The study card: tap to flip. Until the card has been turned over once, the
+ * buttons are "in fog" and swipes do nothing; after that (also when it is
+ * turned back) swipe right = right, left = wrong, down = remove from the blitz
+ * (only with onRemove), or use the buttons. Shared by the blitz and topic study.
  */
 import { useEffect, useRef, useState } from 'react';
 import { Animated, PanResponder, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
@@ -11,40 +13,55 @@ import { useSettings } from '@/lib/settings';
 
 const SWIPE = 110;
 
-export function FlashCard({ cardKey, question, answer, onAnswer }: {
-  cardKey: string; question: string; answer: string; onAnswer: (correct: boolean) => void;
+export function FlashCard({ cardKey, question, answer, onAnswer, onRemove }: {
+  cardKey: string; question: string; answer: string; onAnswer: (correct: boolean) => void; onRemove?: () => void;
 }) {
   const { colors, t } = useSettings();
-  const { width } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
   const [flipped, setFlipped] = useState(false);
+  const [revealed, setRevealed] = useState(false);
   const pan = useRef(new Animated.ValueXY()).current;
   const busy = useRef(false);
 
   // A new card: front side, back in the middle.
   useEffect(() => {
     setFlipped(false);
+    setRevealed(false);
     pan.setValue({ x: 0, y: 0 });
     busy.current = false;
   }, [cardKey, pan]);
 
-  const flyOut = (correct: boolean) => {
-    if (busy.current) return;
-    busy.current = true;
-    Animated.timing(pan, { toValue: { x: (correct ? 1 : -1) * width * 1.3, y: 0 }, duration: 180, useNativeDriver: true })
-      .start(() => onAnswer(correct));
+  const flip = () => {
+    setFlipped((f) => !f);
+    setRevealed(true);
   };
 
-  const flippedRef = useRef(flipped);
-  flippedRef.current = flipped;
+  const fly = (to: { x: number; y: number }, done: () => void) => {
+    if (busy.current) return;
+    busy.current = true;
+    Animated.timing(pan, { toValue: to, duration: 180, useNativeDriver: true }).start(done);
+  };
+  const flyOut = (correct: boolean) => fly({ x: (correct ? 1 : -1) * width * 1.3, y: 0 }, () => onAnswer(correct));
+  const drop = () => { if (onRemove) fly({ x: 0, y: height }, onRemove); };
+
+  const revealedRef = useRef(revealed);
+  revealedRef.current = revealed;
+  const canDropRef = useRef(!!onRemove);
+  canDropRef.current = !!onRemove;
   const flyRef = useRef(flyOut);
   flyRef.current = flyOut;
+  const dropRef = useRef(drop);
+  dropRef.current = drop;
+  const isDown = (g: { dx: number; dy: number }) => canDropRef.current && g.dy > 0 && g.dy > Math.abs(g.dx);
 
   const responder = useRef(
     PanResponder.create({
-      onMoveShouldSetPanResponder: (_, g) => flippedRef.current && Math.abs(g.dx) > 8 && Math.abs(g.dx) > Math.abs(g.dy),
-      onPanResponderMove: (_, g) => pan.setValue({ x: g.dx, y: g.dy * 0.2 }),
+      onMoveShouldSetPanResponder: (_, g) => revealedRef.current
+        && ((Math.abs(g.dx) > 8 && Math.abs(g.dx) > Math.abs(g.dy)) || (g.dy > 8 && isDown(g))),
+      onPanResponderMove: (_, g) => pan.setValue({ x: g.dx, y: isDown(g) ? g.dy : g.dy * 0.2 }),
       onPanResponderRelease: (_, g) => {
-        if (Math.abs(g.dx) > SWIPE) flyRef.current(g.dx > 0);
+        if (Math.abs(g.dx) > SWIPE && Math.abs(g.dx) > Math.abs(g.dy)) flyRef.current(g.dx > 0);
+        else if (isDown(g) && g.dy > SWIPE) dropRef.current();
         else Animated.spring(pan, { toValue: { x: 0, y: 0 }, useNativeDriver: true }).start();
       },
       onPanResponderTerminate: () => Animated.spring(pan, { toValue: { x: 0, y: 0 }, useNativeDriver: true }).start(),
@@ -62,7 +79,7 @@ export function FlashCard({ cardKey, question, answer, onAnswer }: {
           {...responder.panHandlers}
           style={[st.card, { backgroundColor: colors.bg, borderColor: colors.line, transform: [{ translateX: pan.x }, { translateY: pan.y }, { rotate }] }]}
         >
-          <Pressable style={st.inner} onPress={() => setFlipped((f) => !f)}>
+          <Pressable style={st.inner} onPress={flip}>
             <Text style={[st.face, { color: colors.muted }]}>{(flipped ? t('blitz.answer') : t('blitz.question')).toUpperCase()}</Text>
             <ScrollView contentContainerStyle={st.textWrap}>
               <MathText key={flipped ? 'a' : 'q'} text={flipped ? answer : question} style={st.text} />
@@ -73,9 +90,11 @@ export function FlashCard({ cardKey, question, answer, onAnswer }: {
           <Animated.Text style={[st.stamp, st.stampWrong, { color: colors.fg, borderColor: colors.fg, opacity: wrongOpacity }]}>{t('blitz.wrong').toUpperCase()}</Animated.Text>
         </Animated.View>
       </View>
-      <View style={[st.buttons, { opacity: flipped ? 1 : 0 }]} pointerEvents={flipped ? 'auto' : 'none'}>
-        <Pill title={t('blitz.wrong')} ghost onPress={() => flyOut(false)} style={{ flex: 1 }} />
-        <Pill title={t('blitz.right')} onPress={() => flyOut(true)} style={{ flex: 1 }} />
+      {/* Foggy until the first flip; stays clear when the card is turned back. */}
+      <View style={[st.buttons, { opacity: revealed ? 1 : 0.3 }]} pointerEvents={revealed ? 'auto' : 'none'}>
+        <Pill title={t('blitz.wrong')} icon="arrow-left" ghost onPress={() => flyOut(false)} style={[st.btn, { flex: 1 }]} />
+        {onRemove ? <Pill title={t('blitz.remove')} icon="trash-2" ghost color={colors.muted} onPress={drop} style={st.btn} /> : null}
+        <Pill title={t('blitz.right')} icon="arrow-right" iconRight onPress={() => flyOut(true)} style={[st.btn, { flex: 1 }]} />
       </View>
     </>
   );
@@ -88,8 +107,9 @@ const st = StyleSheet.create({
   face: { fontSize: 12, fontWeight: '600', letterSpacing: 1 },
   textWrap: { flexGrow: 1, justifyContent: 'center', paddingVertical: 16 },
   text: { fontSize: 24, fontWeight: '600', textAlign: 'center', lineHeight: 32 },
-  stamp: { position: 'absolute', top: 22, borderWidth: 2, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 3, fontWeight: '700', fontSize: 14 },
+  stamp: { position: 'absolute', top: 64, borderWidth: 2, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 3, fontWeight: '700', fontSize: 14 },
   stampRight: { left: 22, transform: [{ rotate: '-8deg' }] },
   stampWrong: { right: 22, transform: [{ rotate: '8deg' }] },
-  buttons: { flexDirection: 'row', gap: 12, paddingHorizontal: 24, paddingBottom: 56 },
+  buttons: { flexDirection: 'row', gap: 8, paddingHorizontal: 24, paddingBottom: 56 },
+  btn: { paddingHorizontal: 12 },
 });

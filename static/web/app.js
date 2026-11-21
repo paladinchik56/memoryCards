@@ -18,30 +18,34 @@
     }
     renderMath(document.body);
 
-    // Study card: click / Space to flip; once flipped, → right, ← wrong, or swipe.
+    // Study card: click / Space / ↑ to flip. Once it has been turned over (even if turned back):
+    // → or swipe right = right, ← or swipe left = wrong, ↓ = remove from the blitz.
     const card = document.getElementById('flashcard');
     if (card) {
-        const grade = document.querySelector('.grade');
+        const grade = document.getElementById('grade');
         const right = document.getElementById('right-form');
         const wrong = document.getElementById('wrong-form');
+        const remove = document.getElementById('remove-form');
         const stampR = card.querySelector('.stamp.right');
         const stampW = card.querySelector('.stamp.wrong');
-        let sent = false;
+        let sent = false, revealed = false;
         const flip = () => {
             card.classList.toggle('flipped');
-            if (grade) grade.classList.toggle('shown', card.classList.contains('flipped'));
+            if (!revealed) { revealed = true; if (grade) grade.classList.remove('fog'); }
         };
-        const send = (ok) => {
-            if (sent || !card.classList.contains('flipped')) return;
+        const fly = (transform, form) => {
+            if (sent || !revealed || !form) return;
             sent = true;
             card.style.transition = 'transform .18s ease';
-            card.style.transform = `translateX(${ok ? 140 : -140}%) rotate(${ok ? 12 : -12}deg)`;
-            setTimeout(() => (ok ? right : wrong).submit(), 160);
+            card.style.transform = transform;
+            setTimeout(() => form.submit(), 160);
         };
+        const send = (ok) => fly(`translateX(${ok ? 140 : -140}%) rotate(${ok ? 12 : -12}deg)`, ok ? right : wrong);
+        const drop = () => fly('translateY(120%)', remove);
 
         let startX = null, dx = 0, dragged = false;
         card.addEventListener('pointerdown', (e) => {
-            if (!card.classList.contains('flipped')) return;
+            if (!revealed) return;
             startX = e.clientX; dx = 0; dragged = false;
         });
         window.addEventListener('pointermove', (e) => {
@@ -65,12 +69,21 @@
         document.addEventListener('keydown', (e) => {
             const tag = e.target.tagName;
             if (e.altKey || e.ctrlKey || e.metaKey || ['INPUT', 'TEXTAREA', 'SELECT'].includes(tag)) return;
+            if (document.querySelector('details.filter[open]')) return;
             if (e.key === 'ArrowRight') { e.preventDefault(); send(true); }
             else if (e.key === 'ArrowLeft') { e.preventDefault(); send(false); }
-            else if ([' ', 'Enter', 'ArrowUp', 'ArrowDown'].includes(e.key) && tag !== 'BUTTON' && tag !== 'A' && tag !== 'SUMMARY') {
+            else if (e.key === 'ArrowDown') { e.preventDefault(); drop(); }
+            else if ([' ', 'Enter', 'ArrowUp'].includes(e.key) && tag !== 'BUTTON' && tag !== 'A' && tag !== 'SUMMARY') {
                 e.preventDefault(); flip();
             }
         });
+    }
+
+    // Blitz filter: close on a click outside it or on Escape.
+    const filter = document.querySelector('details.filter');
+    if (filter) {
+        document.addEventListener('click', (e) => { if (filter.open && !filter.contains(e.target)) filter.open = false; });
+        document.addEventListener('keydown', (e) => { if (e.key === 'Escape') filter.open = false; });
     }
 
     // Clickable table rows.

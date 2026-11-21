@@ -102,6 +102,30 @@ class BlitzTests(WebTestCase):
         q = self.client.get(reverse('web:blitz') + f'?t={mine.uuid}').context['card'].question
         self.assertEqual(q, 'in mine')
 
+    def test_filter_topics_and_stage_range(self):
+        t1 = Collection.objects.create(owner=self.alice, name='T1')
+        t2 = Collection.objects.create(owner=self.alice, name='T2')
+        t3 = Collection.objects.create(owner=self.alice, name='T3')
+        self.card(question='t1 new', collection=t1, stage=0)
+        self.card(question='t1 stage2', collection=t1, stage=1)
+        self.card(question='t2 stage5', collection=t2, stage=4)
+        self.card(question='t3 stage2', collection=t3, stage=1)
+        url = reverse('web:blitz')
+        both = {'t': [str(t1.uuid), str(t2.uuid)]}
+        self.assertEqual(self.client.get(url, both).context['left'], 3)
+        r = self.client.get(url, {**both, 'smin': '2', 'smax': '7'})
+        self.assertEqual(r.context['left'], 2)
+        self.assertIn(r.context['card'].question, {'t1 stage2', 't2 stage5'})
+        self.assertEqual(self.client.get(url, {'smin': '2', 'smax': '2'}).context['left'], 2)
+        self.assertEqual(self.client.get(url, {'smin': '9', 'smax': 'x'}).context['left'], 0)  # clamped to 7..7
+
+        # Answering keeps the filter and counts in the blitz only (no topic run is touched).
+        card = r.context['card']
+        r = self.client.post(reverse('web:blitz_answer'), {'card': card.uuid, 'correct': '1', **both, 'smin': '2', 'smax': '7'})
+        self.assertEqual(r.url, f'{url}?t={t1.uuid}&t={t2.uuid}&smin=2&smax=7')
+        self.assertEqual(ReviewLog.objects.filter(card=card).count(), 1)
+        self.assertFalse(TopicRun.objects.exists())
+
     def test_cannot_answer_someone_elses_card(self):
         c = self.card(user=self.bob)
         self.assertEqual(self.client.post(reverse('web:blitz_answer'), {'card': c.uuid, 'correct': '1'}).status_code, 404)

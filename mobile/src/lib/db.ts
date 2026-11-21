@@ -92,7 +92,9 @@ export type AddedTopic = { uuid: string; share_token: string; name: string; desc
 export type SimpleCard = { uuid: string; question: string; answer: string };
 
 /** Blitz filter: own topics match a card's topic, added topics match where a copy came from. */
-export type TopicFilter = { topics: string[]; noTopic: boolean } | null; // null = all
+/** Blitz filter. Topics: any of them (none chosen = all topics). Stages: inclusive range,
+ * 0-based like cards.stage (missing = all stages). null = no filter at all. */
+export type TopicFilter = { topics: string[]; noTopic: boolean; stages?: [number, number] } | null;
 
 export const parseTags = (json: string): string[] => {
   try {
@@ -130,14 +132,23 @@ async function enqueue(db: SQLiteDatabase, kind: string, payload: object) {
 
 // ------------------------------------------------------------------ blitz
 
-function filterSql(filter: TopicFilter): { sql: string; params: string[] } {
+function filterSql(filter: TopicFilter): { sql: string; params: (string | number)[] } {
   if (!filter) return { sql: '', params: [] };
+  let sql = '';
+  const params: (string | number)[] = [];
   const parts: string[] = [];
   const marks = filter.topics.map(() => '?').join(',');
-  if (filter.topics.length) parts.push(`collection IN (${marks}) OR source_collection IN (${marks})`);
+  if (filter.topics.length) {
+    parts.push(`collection IN (${marks}) OR source_collection IN (${marks})`);
+    params.push(...filter.topics, ...filter.topics);
+  }
   if (filter.noTopic) parts.push('collection IS NULL');
-  if (!parts.length) return { sql: ' AND 0', params: [] };
-  return { sql: ` AND (${parts.join(' OR ')})`, params: [...filter.topics, ...filter.topics] };
+  if (parts.length) sql += ` AND (${parts.join(' OR ')})`;
+  if (filter.stages) {
+    sql += ' AND stage BETWEEN ? AND ?';
+    params.push(filter.stages[0], filter.stages[1]);
+  }
+  return { sql, params };
 }
 
 export async function dueCards(db: SQLiteDatabase, nowMs: number, filter: TopicFilter = null): Promise<Card[]> {

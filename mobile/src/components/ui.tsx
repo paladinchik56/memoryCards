@@ -31,11 +31,13 @@ export function TopBar({ title, left, onLeft, right }: { title?: string; left?: 
   );
 }
 
-export function Pill({ title, onPress, ghost, disabled, loading, style }: {
+export function Pill({ title, onPress, ghost, disabled, loading, style, icon, iconRight, color }: {
   title: string; onPress?: () => void; ghost?: boolean; disabled?: boolean; loading?: boolean; style?: StyleProp<ViewStyle>;
+  /** Icon before the title, or after it with iconRight. */ icon?: IconName; iconRight?: boolean; /** Text colour override. */ color?: string;
 }) {
   const { colors } = useSettings();
-  const fg = ghost ? colors.fg : colors.bg;
+  const fg = color ?? (ghost ? colors.fg : colors.bg);
+  const ic = icon ? <Icon name={icon} size={16} color={fg} /> : null;
   return (
     <Pressable
       onPress={onPress}
@@ -47,7 +49,13 @@ export function Pill({ title, onPress, ghost, disabled, loading, style }: {
         style,
       ]}
     >
-      {loading ? <ActivityIndicator color={fg} /> : <Text style={[s.pillText, { color: fg }]}>{title}</Text>}
+      {loading ? <ActivityIndicator color={fg} /> : (
+        <View style={s.pillRow}>
+          {iconRight ? null : ic}
+          <Text style={[s.pillText, { color: fg }]} numberOfLines={1}>{title}</Text>
+          {iconRight ? ic : null}
+        </View>
+      )}
     </Pressable>
   );
 }
@@ -108,7 +116,8 @@ export const s = StyleSheet.create({
   topSide: { minWidth: 40, height: 40, justifyContent: 'center' },
   topTitle: { flex: 1, textAlign: 'center', fontSize: 16, fontWeight: '600' },
   pill: { borderRadius: 999, paddingVertical: 17, paddingHorizontal: 20, alignItems: 'center', justifyContent: 'center' },
-  pillText: { fontSize: 16, fontWeight: '600' },
+  pillText: { fontSize: 16, fontWeight: '600', flexShrink: 1 },
+  pillRow: { flexDirection: 'row', alignItems: 'center', gap: 7 },
   chip: { flexDirection: 'row', alignItems: 'center', gap: 6, borderWidth: 1, borderRadius: 999, paddingVertical: 7, paddingHorizontal: 13, alignSelf: 'flex-start' },
   chipText: { fontSize: 13, fontWeight: '500', maxWidth: 220 },
   section: { fontSize: 12, fontWeight: '600', letterSpacing: 1, paddingTop: 22, paddingBottom: 4 },

@@ -5,9 +5,15 @@
 {% block content %}
 <div class="study-top">
     <a class="icon-link" href="{% url 'web:study' %}" title="{{ t.close }}">✕</a>
-    <details class="panel" style="flex:1; max-width:340px">
-        <summary>⚲ {{ filter_label }}</summary>
-        <form method="get">
+    <span class="muted small filter-label">{% if filtered %}{{ filter_label }}{% endif %}</span>
+    <span class="muted small">{{ left }}</span>
+</div>
+
+<div class="card-stack">
+    <details class="filter{% if filtered %} on{% endif %}">
+        <summary title="{{ filter_label }}"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 4h18l-7 8.5V19l-4 2v-8.5z"/></svg>{{ t.blitz_filter }}</summary>
+        <form method="get" class="filter-panel">
+            <div class="filter-title">{{ filter_label }}</div>
             <p class="muted small" style="margin:0 0 6px">{{ t.blitz_filter_hint }}</p>
             {% for uuid, name, on in own_topics %}
                 <label class="check-row"><input type="checkbox" name="t" value="{{ uuid }}"{% if on %} checked{% endif %}> {{ name }}</label>
@@ -16,15 +22,22 @@
                 <label class="check-row"><input type="checkbox" name="t" value="{{ uuid }}"{% if on %} checked{% endif %}> {{ name }}</label>
             {% endfor %}
             <label class="check-row"><input type="checkbox" name="t" value="none"{% if none_selected %} checked{% endif %}> {{ t.lib_no_topic }}</label>
+            <p class="muted small" style="margin:14px 0 6px">{{ t.blitz_stages_hint }}</p>
+            <div class="stage-range">
+                <select class="select" name="smin" aria-label="{{ t.blitz_stage_from }}">
+                    {% for n, interval in stage_options %}<option value="{{ n }}"{% if n == stages.0 %} selected{% endif %}>{{ n }} · {{ interval }}</option>{% endfor %}
+                </select>
+                <span class="muted">—</span>
+                <select class="select" name="smax" aria-label="{{ t.blitz_stage_to }}">
+                    {% for n, interval in stage_options %}<option value="{{ n }}"{% if n == stages.1 %} selected{% endif %}>{{ n }} · {{ interval }}</option>{% endfor %}
+                </select>
+            </div>
             <div class="btn-row" style="margin:12px 0">
-                <a class="btn ghost inline" href="{% url 'web:blitz' %}">{{ t.blitz_all_topics }}</a>
+                <a class="btn ghost inline" href="{% url 'web:blitz' %}">{{ t.blitz_reset_filter }}</a>
                 <button class="btn inline" type="submit">{{ t.blitz_show }}</button>
             </div>
         </form>
     </details>
-    <span class="muted small">{{ left }}</span>
-</div>
-
 {% if card %}
 <div class="card-area">
     <div class="flashcard" id="flashcard">
@@ -36,16 +49,22 @@
         <div class="text back">{{ card.answer }}</div>
         <div class="hint">{{ t.blitz_flip }}</div>
     </div>
-    <div class="grade">
+    {# Foggy until the card is first turned over; stays clear after that, also when it is turned back. #}
+    <div class="grade fog" id="grade">
         <form method="post" action="{% url 'web:blitz_answer' %}" id="wrong-form">{% csrf_token %}
             <input type="hidden" name="card" value="{{ card.uuid }}"><input type="hidden" name="correct" value="0">
-            {% for v in values %}<input type="hidden" name="t" value="{{ v }}">{% endfor %}
-            <button class="btn ghost" type="submit">{{ t.blitz_wrong }}</button>
+            {% for k, v in params %}<input type="hidden" name="{{ k }}" value="{{ v }}">{% endfor %}
+            <button class="btn ghost" type="submit"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>{{ t.blitz_wrong }}</button>
+        </form>
+        <form method="post" action="{% url 'web:blitz_remove' %}" id="remove-form" class="middle">{% csrf_token %}
+            <input type="hidden" name="card" value="{{ card.uuid }}">
+            {% for k, v in params %}<input type="hidden" name="{{ k }}" value="{{ v }}">{% endfor %}
+            <button class="btn ghost" type="submit"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6"/></svg>{{ t.blitz_remove }}</button>
         </form>
         <form method="post" action="{% url 'web:blitz_answer' %}" id="right-form">{% csrf_token %}
             <input type="hidden" name="card" value="{{ card.uuid }}"><input type="hidden" name="correct" value="1">
-            {% for v in values %}<input type="hidden" name="t" value="{{ v }}">{% endfor %}
-            <button class="btn" type="submit">{{ t.blitz_right }}</button>
+            {% for k, v in params %}<input type="hidden" name="{{ k }}" value="{{ v }}">{% endfor %}
+            <button class="btn" type="submit">{{ t.blitz_right }}<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg></button>
         </form>
     </div>
     <div class="keys">{{ t.blitz_keys }}</div>
@@ -53,18 +72,13 @@
 {% else %}
 <div class="result"><div class="big">0</div><div class="caption">{{ t.blitz_empty }}</div></div>
 {% endif %}
+</div>
 
 <div class="study-bottom">
-    {% if card %}
-    <form method="post" action="{% url 'web:blitz_remove' %}">{% csrf_token %}
-        <input type="hidden" name="card" value="{{ card.uuid }}">
-        {% for v in values %}<input type="hidden" name="t" value="{{ v }}">{% endfor %}
-        <button type="submit">🗑 {{ t.blitz_remove }}</button>
-    </form>
-    {% else %}<span></span>{% endif %}
+    <span></span>
     {% if can_undo %}
     <form method="post" action="{% url 'web:blitz_undo' %}">{% csrf_token %}
-        {% for v in values %}<input type="hidden" name="t" value="{{ v }}">{% endfor %}
+        {% for k, v in params %}<input type="hidden" name="{{ k }}" value="{{ v }}">{% endfor %}
         <button type="submit">↶ {{ t.blitz_undo }}</button>
     </form>
     {% endif %}

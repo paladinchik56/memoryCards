@@ -20,17 +20,17 @@
         <div class="text back">{{ card.answer }}</div>
         <div class="hint">{{ t.blitz_flip }}</div>
     </div>
-    <div class="grade">
+    <div class="grade fog" id="grade">
         <form method="post" action="{% url 'web:simple_answer' collection.uuid %}" id="wrong-form">{% csrf_token %}
             <input type="hidden" name="card" value="{{ card.uuid }}"><input type="hidden" name="correct" value="0">
-            <button class="btn ghost" type="submit">{{ t.blitz_wrong }}</button>
+            <button class="btn ghost" type="submit"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>{{ t.blitz_wrong }}</button>
         </form>
         <form method="post" action="{% url 'web:simple_answer' collection.uuid %}" id="right-form">{% csrf_token %}
             <input type="hidden" name="card" value="{{ card.uuid }}"><input type="hidden" name="correct" value="1">
-            <button class="btn" type="submit">{{ t.blitz_right }}</button>
+            <button class="btn" type="submit">{{ t.blitz_right }}<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg></button>
         </form>
     </div>
-    <div class="keys">{{ t.blitz_keys }}</div>
+    <div class="keys">{{ t.simple_keys }}</div>
 </div>
 {% elif not run.round_total %}
 <div class="result"><p class="muted">{{ t.simple_empty }}</p></div>

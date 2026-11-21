@@ -73,13 +73,26 @@ def _filter_topics(request):
     return own, added
 
 
-def _blitz_query(request):
-    """Selected filter values from ?t=<collection uuid>&t=none."""
-    values = request.GET.getlist('t') if request.method == 'GET' else request.POST.getlist('t')
-    return [v for v in values if v][:50]
+FULL_STAGES = (1, MAX_STAGE + 1)  # stages as the user sees them: 1..7
 
 
-def _due(user, values, now):
+def _blitz_filter(request):
+    """Blitz filter from ?t=<collection uuid>&t=none&smin=2&smax=7.
+    Topics: any of them (OR); stages: an inclusive range, numbered from 1."""
+    data = request.GET if request.method == 'GET' else request.POST
+    values = [v for v in data.getlist('t') if v][:50]
+
+    def stage(key, default):
+        try:
+            return min(max(int(data.get(key, '')), FULL_STAGES[0]), FULL_STAGES[1])
+        except ValueError:
+            return default
+
+    lo, hi = stage('smin', FULL_STAGES[0]), stage('smax', FULL_STAGES[1])
+    return values, (min(lo, hi), max(lo, hi))
+
+
+def _due(user, values, stages, now):
     cards = Card.objects.filter(user=user, in_pool=True, next_review_at__lte=now)
     if values:
         uuids = [v for v in values if v != NONE]
@@ -87,18 +100,29 @@ def _due(user, values, now):
         if NONE in values:
             q |= Q(collection__isnull=True)
         cards = cards.filter(q)
+    if stages != FULL_STAGES:
+        cards = cards.filter(stage__gte=stages[0] - 1, stage__lte=stages[1] - 1)
     return list(cards)
 
 
-def _blitz_url(values):
-    return reverse('web:blitz') + (('?' + urlencode([('t', v) for v in values])) if values else '')
+def _blitz_params(values, stages):
+    """The filter as (name, value) pairs: for links and hidden form fields."""
+    pairs = [('t', v) for v in values]
+    if stages != FULL_STAGES:
+        pairs += [('smin', stages[0]), ('smax', stages[1])]
+    return pairs
+
+
+def _blitz_url(values, stages):
+    params = _blitz_params(values, stages)
+    return reverse('web:blitz') + (('?' + urlencode(params)) if params else '')
 
 
 @login_required
 def blitz_view(request):
-    values = _blitz_query(request)
+    values, stages = _blitz_filter(request)
     now = timezone.now()
-    due = _due(request.user, values, now)
+    due = _due(request.user, values, stages, now)
     state = request.session.get(SESSION_BLITZ) or blitz.new_state()
     card = next((c for c in due if c.pk == state.get('current')), None)
     if card is None:
@@ -108,15 +132,21 @@ def blitz_view(request):
     own, added = _filter_topics(request)
     t = strings(request)
     selected = set(values)
+    label = t['blitz_all_topics'] if not values else tr(request, 'blitz_topics_n', n=len(values))
+    if stages != FULL_STAGES:
+        label += ' · ' + tr(request, 'blitz_stages_range', lo=stages[0], hi=stages[1])
     return render(request, 'web/blitz.html', {
         'card': card,
         'left': len(due),
-        'values': values,
-        'filter_label': t['blitz_all_topics'] if not values else tr(request, 'blitz_topics_n', n=len(values)),
+        'params': _blitz_params(values, stages),
+        'stages': stages,
+        'stage_options': [(i + 1, format_duration(iv.total_seconds(), t)) for i, iv in enumerate(STAGE_INTERVALS)],
+        'filter_label': label,
+        'filtered': bool(values) or stages != FULL_STAGES,
         'own_topics': [(c.uuid, c.name, str(c.uuid) in selected) for c in own],
         'added_topics': [(c.uuid, c.name, str(c.uuid) in selected) for c in added],
         'none_selected': NONE in selected,
-        'add_url': reverse('web:add') + '?' + urlencode({'next': _blitz_url(values)}),
+        'add_url': reverse('web:add') + '?' + urlencode({'next': _blitz_url(values, stages)}),
         'can_undo': bool(request.session.get(SESSION_UNDO)),
     })
 
@@ -124,7 +154,7 @@ def blitz_view(request):
 @login_required
 @require_POST
 def blitz_answer(request):
-    values = _blitz_query(request)
+    values, stages = _blitz_filter(request)
     card = get_object_or_404(Card, user=request.user, uuid=_as_uuid(request.POST.get('card')))
     correct = request.POST.get('correct') == '1'
     test_mode = request.session.get('test_mode', False)
@@ -132,18 +162,18 @@ def blitz_answer(request):
     state = request.session.get(SESSION_BLITZ) or blitz.new_state()
     request.session[SESSION_BLITZ] = blitz.after_answer(state, card.pk, correct)
     request.session[SESSION_UNDO] = log.pk
-    return redirect(_blitz_url(values))
+    return redirect(_blitz_url(values, stages))
 
 
 @login_required
 @require_POST
 def blitz_remove(request):
-    values = _blitz_query(request)
+    values, stages = _blitz_filter(request)
     card = get_object_or_404(Card, user=request.user, uuid=_as_uuid(request.POST.get('card')))
     remove_from_pool(card)
     state = request.session.get(SESSION_BLITZ) or blitz.new_state()
     request.session[SESSION_BLITZ] = {**state, 'last': card.pk, 'current': None}
-    return redirect(_blitz_url(values))
+    return redirect(_blitz_url(values, stages))
 
 
 @login_required
@@ -152,7 +182,7 @@ def blitz_undo(request):
     """Roll back the last answer given on this page (once). Only answers made
     here: a review that came from the phone is never deleted, or a re-sent
     copy of it would be applied again."""
-    values = _blitz_query(request)
+    values, stages = _blitz_filter(request)
     log_pk = request.session.pop(SESSION_UNDO, None)
     log = ReviewLog.objects.filter(user=request.user, pk=log_pk).select_related('card').first() if log_pk else None
     if log:
@@ -164,7 +194,7 @@ def blitz_undo(request):
         log.delete()
         state = request.session.get(SESSION_BLITZ) or blitz.new_state()
         request.session[SESSION_BLITZ] = {**state, 'current': card.pk, 'last': None}
-    return redirect(_blitz_url(values))
+    return redirect(_blitz_url(values, stages))
 
 
 @login_required

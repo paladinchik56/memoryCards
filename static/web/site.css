@@ -98,6 +98,26 @@ a.row:hover { opacity: .65; }
 .dot { font-size: 11px; color: var(--muted); margin-top: 4px; white-space: normal; }
 
 /* flashcard */
+.card-stack { flex: 1; display: flex; flex-direction: column; position: relative; min-height: 0; }
+.filter-label { flex: 1; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* Filter button in the card's top-right corner: same pill style, a soft fill to stand out. */
+details.filter { position: absolute; top: 26px; right: 14px; z-index: 5; }
+details.filter > summary {
+    list-style: none; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;
+    padding: 7px 13px; border: 1px solid var(--line); border-radius: 999px; background: var(--soft);
+    font-size: 13px; font-weight: 600; color: var(--fg);
+}
+details.filter > summary::-webkit-details-marker { display: none; }
+details.filter > summary:hover { border-color: var(--muted); }
+details.filter.on > summary { background: var(--fg); border-color: var(--fg); color: var(--bg); }
+details.filter > summary::after { content: ''; }
+details.filter.on > summary::after { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--bg); }
+.filter-panel {
+    position: absolute; right: 0; top: calc(100% + 8px); width: min(340px, calc(100vw - 32px));
+    max-height: 70vh; overflow: auto; background: var(--bg); border: 1px solid var(--line);
+    border-radius: 20px; padding: 14px 16px 2px; box-shadow: 0 12px 40px rgba(0,0,0,.12);
+}
+.filter-title { font-weight: 700; font-size: 16px; margin-bottom: 4px; }
 .study-top { display: flex; align-items: center; justify-content: space-between; height: 56px; gap: 10px; }
 .card-area { flex: 1; display: flex; flex-direction: column; padding: 12px 0; min-height: 0; }
 .flashcard {
@@ -112,12 +132,17 @@ a.row:hover { opacity: .65; }
 .flashcard.flipped .back { display: flex; }
 .flashcard.flipped .face.back { display: block; }
 .flashcard.flipped .hint { display: none; }
-.stamp { position: absolute; top: 22px; border: 2px solid var(--fg); border-radius: 10px; padding: 3px 10px; font-weight: 700; font-size: 14px; opacity: 0; }
+.stamp { position: absolute; top: 64px; border: 2px solid var(--fg); border-radius: 10px; padding: 3px 10px; font-weight: 700; font-size: 14px; opacity: 0; }
 .stamp.right { left: 22px; transform: rotate(-8deg); }
 .stamp.wrong { right: 22px; transform: rotate(8deg); }
-.grade { display: flex; gap: 12px; margin-top: 16px; visibility: hidden; }
-.grade.shown { visibility: visible; }
-.grade form { flex: 1; }
+.grade { display: flex; gap: 10px; margin-top: 16px; transition: filter .3s ease, opacity .3s ease; }
+.grade.fog { filter: blur(4px); opacity: .45; pointer-events: none; user-select: none; }
+.grade form { flex: 1; min-width: 0; }
+.grade form.middle { flex: 0 1 auto; }
+.grade .btn { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 16px 14px; white-space: nowrap; }
+.grade .middle .btn { font-weight: 500; color: var(--muted); }
+.grade .ic { width: 16px; height: 16px; flex: none; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+@media (max-width: 420px) { .grade .btn { padding: 14px 10px; gap: 5px; font-size: 14px; } }
 .study-bottom { display: flex; justify-content: space-between; align-items: center; padding-top: 14px; font-size: 14px; color: var(--muted); gap: 12px; }
 .study-bottom a, .study-bottom button { color: var(--muted); text-decoration: none; background: none; border: 0; font: inherit; cursor: pointer; padding: 0; }
 .keys { text-align: center; font-size: 12px; color: var(--muted); margin-top: 8px; }
@@ -145,6 +170,8 @@ input[type=checkbox], input[type=radio] { width: 18px; height: 18px; accent-colo
 details.panel { border: 1px solid var(--line); border-radius: 20px; padding: 0 16px; }
 details.panel > summary { list-style: none; cursor: pointer; padding: 11px 0; font-weight: 500; font-size: 14px; }
 details.panel > summary::-webkit-details-marker { display: none; }
+.stage-range { display: flex; align-items: center; gap: 8px; }
+.stage-range .select { flex: 1; min-width: 0; }
 .check-row { display: flex; align-items: center; gap: 12px; padding: 11px 0; border-top: 1px solid var(--line); cursor: pointer; }
 .actionbar {
     position: sticky; bottom: 76px; background: var(--bg); border-top: 1px solid var(--line); margin-top: 16px;

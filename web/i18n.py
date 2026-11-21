@@ -14,10 +14,12 @@ RU = {
     'study_simple': 'Просто учёба', 'study_add': 'Добавить', 'study_all': 'Все карточки',
 
     'blitz_question': 'Вопрос', 'blitz_answer': 'Ответ', 'blitz_flip': 'Нажмите или пробел, чтобы перевернуть',
-    'blitz_right': 'Верно', 'blitz_wrong': 'Неверно', 'blitz_keys': '← неверно · → верно',
+    'blitz_right': 'Верно', 'blitz_wrong': 'Неверно', 'blitz_keys': '← неверно · ↓ из блитца · → верно · пробел — перевернуть',
+    'simple_keys': '← неверно · → верно · пробел — перевернуть',
     'blitz_empty': 'карточек, добавьте карточки в блитц', 'blitz_all_topics': 'Все темы', 'blitz_topics_n': 'Тем: {n}',
-    'blitz_add': 'Карточка', 'blitz_remove': 'Из блитца', 'blitz_filter_hint': 'Только карточки блитца из выбранных тем',
-    'blitz_show': 'Показать', 'blitz_undo': 'Отменить последний ответ', 'blitz_left': 'Осталось: {n}',
+    'blitz_add': 'Карточка', 'blitz_remove': 'Из блитца', 'blitz_filter_hint': 'Только карточки блитца из выбранных тем (не выбрано — все темы)',
+    'blitz_show': 'Показать', 'blitz_stages_hint': 'Ступени: от — до', 'blitz_stage_from': 'От ступени',
+    'blitz_stage_to': 'До ступени', 'blitz_stages_range': 'ступени {lo}–{hi}', 'blitz_reset_filter': 'Сбросить', 'blitz_filter': 'Фильтр', 'blitz_undo': 'Отменить последний ответ', 'blitz_left': 'Осталось: {n}',
 
     'add_title': 'Добавить карточку', 'add_question': 'Вопрос', 'add_answer': 'Ответ', 'add_submit': 'Добавить',
     'add_no_topic': 'Без темы', 'add_topic': 'Тема', 'add_added': 'Добавлено в блитц',
@@ -101,10 +103,12 @@ EN = {
     'study_simple': 'Topic study', 'study_add': 'Add', 'study_all': 'All cards',
 
     'blitz_question': 'Question', 'blitz_answer': 'Answer', 'blitz_flip': 'Click or press Space to flip',
-    'blitz_right': 'Right', 'blitz_wrong': 'Wrong', 'blitz_keys': '← wrong · → right',
+    'blitz_right': 'Right', 'blitz_wrong': 'Wrong', 'blitz_keys': '← wrong · ↓ from blitz · → right · Space to flip',
+    'simple_keys': '← wrong · → right · Space to flip',
     'blitz_empty': 'cards, add cards to the blitz', 'blitz_all_topics': 'All topics', 'blitz_topics_n': 'Topics: {n}',
-    'blitz_add': 'Card', 'blitz_remove': 'From blitz', 'blitz_filter_hint': 'Only blitz cards from the chosen topics',
-    'blitz_show': 'Show', 'blitz_undo': 'Undo last answer', 'blitz_left': 'Left: {n}',
+    'blitz_add': 'Card', 'blitz_remove': 'From blitz', 'blitz_filter_hint': 'Only blitz cards from the chosen topics (none chosen = all topics)',
+    'blitz_show': 'Show', 'blitz_stages_hint': 'Stages: from — to', 'blitz_stage_from': 'From stage',
+    'blitz_stage_to': 'To stage', 'blitz_stages_range': 'stages {lo}–{hi}', 'blitz_reset_filter': 'Reset', 'blitz_filter': 'Filter', 'blitz_undo': 'Undo last answer', 'blitz_left': 'Left: {n}',
 
     'add_title': 'Add card', 'add_question': 'Question', 'add_answer': 'Answer', 'add_submit': 'Add',
     'add_no_topic': 'No topic', 'add_topic': 'Topic', 'add_added': 'Added to the blitz',
