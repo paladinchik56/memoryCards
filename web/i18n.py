@@ -14,8 +14,7 @@ RU = {
     'study_simple': 'Просто учёба', 'study_add': 'Добавить', 'study_all': 'Все карточки',
 
     'blitz_question': 'Вопрос', 'blitz_answer': 'Ответ', 'blitz_flip': 'Нажмите или пробел, чтобы перевернуть',
-    'blitz_right': 'Верно', 'blitz_wrong': 'Неверно', 'blitz_keys': '← неверно · ↓ из блитца · → верно · пробел — перевернуть',
-    'simple_keys': '← неверно · → верно · пробел — перевернуть',
+    'blitz_right': 'Верно', 'blitz_wrong': 'Неверно',
     'blitz_empty': 'карточек, добавьте карточки в блитц', 'blitz_all_topics': 'Все темы', 'blitz_topics_n': 'Тем: {n}',
     'blitz_add': 'Карточка', 'blitz_remove': 'Из блитца', 'blitz_filter_hint': 'Только карточки блитца из выбранных тем (не выбрано — все темы)',
     'blitz_show': 'Показать', 'blitz_stages_hint': 'Ступени: от — до', 'blitz_stage_from': 'От ступени',
@@ -103,8 +102,7 @@ EN = {
     'study_simple': 'Topic study', 'study_add': 'Add', 'study_all': 'All cards',
 
     'blitz_question': 'Question', 'blitz_answer': 'Answer', 'blitz_flip': 'Click or press Space to flip',
-    'blitz_right': 'Right', 'blitz_wrong': 'Wrong', 'blitz_keys': '← wrong · ↓ from blitz · → right · Space to flip',
-    'simple_keys': '← wrong · → right · Space to flip',
+    'blitz_right': 'Right', 'blitz_wrong': 'Wrong',
     'blitz_empty': 'cards, add cards to the blitz', 'blitz_all_topics': 'All topics', 'blitz_topics_n': 'Topics: {n}',
     'blitz_add': 'Card', 'blitz_remove': 'From blitz', 'blitz_filter_hint': 'Only blitz cards from the chosen topics (none chosen = all topics)',
     'blitz_show': 'Show', 'blitz_stages_hint': 'Stages: from — to', 'blitz_stage_from': 'From stage',

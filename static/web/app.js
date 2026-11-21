@@ -22,7 +22,6 @@
     // → or swipe right = right, ← or swipe left = wrong, ↓ = remove from the blitz.
     const card = document.getElementById('flashcard');
     if (card) {
-        const grade = document.getElementById('grade');
         const right = document.getElementById('right-form');
         const wrong = document.getElementById('wrong-form');
         const remove = document.getElementById('remove-form');
@@ -31,7 +30,7 @@
         let sent = false, revealed = false;
         const flip = () => {
             card.classList.toggle('flipped');
-            if (!revealed) { revealed = true; if (grade) grade.classList.remove('fog'); }
+            if (!revealed) { revealed = true; document.querySelectorAll('.fog').forEach((el) => el.classList.remove('fogged')); }
         };
         const fly = (transform, form) => {
             if (sent || !revealed || !form) return;

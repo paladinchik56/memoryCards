@@ -14,7 +14,8 @@ import { useSettings } from '@/lib/settings';
 const SWIPE = 110;
 
 export function FlashCard({ cardKey, question, answer, onAnswer, onRemove }: {
-  cardKey: string; question: string; answer: string; onAnswer: (correct: boolean) => void; onRemove?: () => void;
+  cardKey: string; question: string; answer: string; onAnswer: (correct: boolean) => void;
+  /** Swipe down removes the card from the blitz (the button lives on the screen). */ onRemove?: () => void;
 }) {
   const { colors, t } = useSettings();
   const { width, height } = useWindowDimensions();
@@ -68,6 +69,7 @@ export function FlashCard({ cardKey, question, answer, onAnswer, onRemove }: {
     }),
   ).current;
 
+  const fog = { opacity: revealed ? 1 : 0.3 };
   const rotate = pan.x.interpolate({ inputRange: [-width, 0, width], outputRange: ['-12deg', '0deg', '12deg'] });
   const rightOpacity = pan.x.interpolate({ inputRange: [0, SWIPE], outputRange: [0, 1], extrapolate: 'clamp' });
   const wrongOpacity = pan.x.interpolate({ inputRange: [-SWIPE, 0], outputRange: [1, 0], extrapolate: 'clamp' });
@@ -91,9 +93,8 @@ export function FlashCard({ cardKey, question, answer, onAnswer, onRemove }: {
         </Animated.View>
       </View>
       {/* Foggy until the first flip; stays clear when the card is turned back. */}
-      <View style={[st.buttons, { opacity: revealed ? 1 : 0.3 }]} pointerEvents={revealed ? 'auto' : 'none'}>
+      <View style={[st.buttons, fog]} pointerEvents={revealed ? 'auto' : 'none'}>
         <Pill title={t('blitz.wrong')} icon="arrow-left" ghost onPress={() => flyOut(false)} style={[st.btn, { flex: 1 }]} />
-        {onRemove ? <Pill title={t('blitz.remove')} icon="trash-2" ghost color={colors.muted} onPress={drop} style={st.btn} /> : null}
         <Pill title={t('blitz.right')} icon="arrow-right" iconRight onPress={() => flyOut(true)} style={[st.btn, { flex: 1 }]} />
       </View>
     </>
@@ -110,6 +111,6 @@ const st = StyleSheet.create({
   stamp: { position: 'absolute', top: 64, borderWidth: 2, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 3, fontWeight: '700', fontSize: 14 },
   stampRight: { left: 22, transform: [{ rotate: '-8deg' }] },
   stampWrong: { right: 22, transform: [{ rotate: '8deg' }] },
-  buttons: { flexDirection: 'row', gap: 8, paddingHorizontal: 24, paddingBottom: 56 },
+  buttons: { flexDirection: 'row', gap: 12, paddingHorizontal: 24, paddingBottom: 56 },
   btn: { paddingHorizontal: 12 },
 });

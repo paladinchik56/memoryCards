@@ -50,16 +50,11 @@
         <div class="hint">{{ t.blitz_flip }}</div>
     </div>
     {# Foggy until the card is first turned over; stays clear after that, also when it is turned back. #}
-    <div class="grade fog" id="grade">
+    <div class="grade fog fogged">
         <form method="post" action="{% url 'web:blitz_answer' %}" id="wrong-form">{% csrf_token %}
             <input type="hidden" name="card" value="{{ card.uuid }}"><input type="hidden" name="correct" value="0">
             {% for k, v in params %}<input type="hidden" name="{{ k }}" value="{{ v }}">{% endfor %}
             <button class="btn ghost" type="submit"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>{{ t.blitz_wrong }}</button>
-        </form>
-        <form method="post" action="{% url 'web:blitz_remove' %}" id="remove-form" class="middle">{% csrf_token %}
-            <input type="hidden" name="card" value="{{ card.uuid }}">
-            {% for k, v in params %}<input type="hidden" name="{{ k }}" value="{{ v }}">{% endfor %}
-            <button class="btn ghost" type="submit"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6"/></svg>{{ t.blitz_remove }}</button>
         </form>
         <form method="post" action="{% url 'web:blitz_answer' %}" id="right-form">{% csrf_token %}
             <input type="hidden" name="card" value="{{ card.uuid }}"><input type="hidden" name="correct" value="1">
@@ -67,21 +62,32 @@
             <button class="btn" type="submit">{{ t.blitz_right }}<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg></button>
         </form>
     </div>
-    <div class="keys">{{ t.blitz_keys }}</div>
+    <div class="grade-sub">
+        {% if can_undo %}
+        <form method="post" action="{% url 'web:blitz_undo' %}" class="side">{% csrf_token %}
+            {% for k, v in params %}<input type="hidden" name="{{ k }}" value="{{ v }}">{% endfor %}
+            <button type="submit">↶ {{ t.blitz_undo }}</button>
+        </form>
+        {% else %}<span class="side"></span>{% endif %}
+        <form method="post" action="{% url 'web:blitz_remove' %}" id="remove-form" class="fog fogged">{% csrf_token %}
+            <input type="hidden" name="card" value="{{ card.uuid }}">
+            {% for k, v in params %}<input type="hidden" name="{{ k }}" value="{{ v }}">{% endfor %}
+            <button class="btn grey" type="submit"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6"/></svg>{{ t.blitz_remove }}</button>
+        </form>
+        <a class="side right" href="{{ add_url }}">+ {{ t.blitz_add }}</a>
+    </div>
 </div>
 {% else %}
 <div class="result"><div class="big">0</div><div class="caption">{{ t.blitz_empty }}</div></div>
-{% endif %}
-</div>
-
 <div class="study-bottom">
-    <span></span>
     {% if can_undo %}
     <form method="post" action="{% url 'web:blitz_undo' %}">{% csrf_token %}
         {% for k, v in params %}<input type="hidden" name="{{ k }}" value="{{ v }}">{% endfor %}
         <button type="submit">↶ {{ t.blitz_undo }}</button>
     </form>
-    {% endif %}
+    {% else %}<span></span>{% endif %}
     <a href="{{ add_url }}">+ {{ t.blitz_add }}</a>
+</div>
+{% endif %}
 </div>
 {% endblock %}

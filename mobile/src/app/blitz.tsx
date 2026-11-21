@@ -92,6 +92,12 @@ export default function Blitz() {
       <FilterButton active={!!filter} label={t('blitz.filter')} onPress={() => setFilterOpen(true)} />
       </View>
 
+      {card ? (
+        <Pressable style={[st.corner, { left: 24, bottom }]} onPress={() => void removeCurrent()} hitSlop={10}>
+          <Icon name="trash-2" size={18} color={colors.muted} />
+          <Muted style={{ fontSize: 14 }}>{t('blitz.remove')}</Muted>
+        </Pressable>
+      ) : null}
       <Pressable style={[st.corner, { right: 24, bottom }]} onPress={() => router.push('/add-card')} hitSlop={10}>
         <Icon name="plus" size={18} color={colors.muted} />
         <Muted style={{ fontSize: 14 }}>{t('blitz.addCard')}</Muted>
