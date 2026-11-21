@@ -5,7 +5,7 @@ import { useCallback, useState } from 'react';
 import { FlatList, StyleSheet, Text, View } from 'react-native';
 
 import { Muted, Screen, TopBar } from '@/components/ui';
-import { allCards, type Card } from '@/lib/db';
+import { blitzCards, type Card } from '@/lib/db';
 import { formatDuration } from '@/lib/i18n';
 import { useSettings } from '@/lib/settings';
 
@@ -14,7 +14,7 @@ export default function Cards() {
   const { colors, t } = useSettings();
   const [cards, setCards] = useState<(Card & { topic: string | null })[]>([]);
 
-  useFocusEffect(useCallback(() => { void allCards(db).then(setCards); }, [db]));
+  useFocusEffect(useCallback(() => { void blitzCards(db).then(setCards); }, [db]));
 
   const now = Date.now();
   return (

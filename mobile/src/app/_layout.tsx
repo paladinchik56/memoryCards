@@ -19,6 +19,11 @@ function Navigator() {
         <Stack.Screen name="add-card" options={{ presentation: 'modal' }} />
         <Stack.Screen name="cards" />
         <Stack.Screen name="algorithm" />
+        <Stack.Screen name="topic-edit" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="card/[id]" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="account" />
+        <Stack.Screen name="simple/index" />
+        <Stack.Screen name="simple/[id]" options={{ gestureEnabled: false }} />
       </Stack>
     </>
   );

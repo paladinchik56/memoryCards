@@ -45,7 +45,7 @@ def card_list(request):
 
     reviewed_today = ReviewLog.objects.filter(user=request.user, reviewed_at__gte=today_start).count()
     reviewed_this_week = ReviewLog.objects.filter(user=request.user, reviewed_at__gte=week_start).count()
-    due_count = Card.objects.filter(user=request.user, next_review_at__lte=timezone.now()).count()
+    due_count = Card.objects.filter(user=request.user, in_pool=True, next_review_at__lte=timezone.now()).count()
 
     learned_count = sum(1 for card in cards if card.stage >= MAX_STAGE)
     quote_text, quote_author = get_quote_of_the_day()
@@ -259,7 +259,7 @@ def review(request):
         initial = {'collection': selected[0].pk} if len(selected) == 1 and not include_none else None
         form = CardForm(user=request.user, initial=initial)
 
-    cards = Card.objects.filter(user=request.user, next_review_at__lte=timezone.now())
+    cards = Card.objects.filter(user=request.user, in_pool=True, next_review_at__lte=timezone.now())
     if selected or include_none:
         topic_q = Q(collection__in=selected)
         if include_none:

@@ -24,6 +24,8 @@ class Collection(models.Model):
     owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='collections')
     name = models.CharField(max_length=100)
     description = models.TextField(max_length=700, blank=True)
+    # Free-form labels used by the library search, e.g. ["physics", "formulas"].
+    tags = models.JSONField(default=list, blank=True)
     visibility = models.CharField(max_length=10, choices=VISIBILITY_CHOICES, default=VISIBILITY_PRIVATE)
     share_token = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     # Stable id shared with the mobile app (which creates rows offline, so it
@@ -42,6 +44,9 @@ class Card(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='cards')
     question = models.TextField()
     answer = models.TextField()
+    # Whether the card is in the user's blitz (the set of cards being learned).
+    # A card can sit in a topic without being in the blitz.
+    in_pool = models.BooleanField(default=True)
     stage = models.PositiveSmallIntegerField(default=0)
     # Correct answers collected on the current stage (see scheduler.py).
     correct_count = models.PositiveSmallIntegerField(default=0)
@@ -61,11 +66,16 @@ class Card(models.Model):
     source_collection = models.ForeignKey(
     Collection, on_delete = models.SET_NULL, null=True, blank=True, related_name='+',
     )
+    # For a copy of someone else's card added to the blitz (decision 15, "A'"):
+    # the original, so adding it again is recognised as "already in blitz".
+    source_card = models.ForeignKey(
+        'self', on_delete=models.SET_NULL, null=True, blank=True, related_name='+',
+    )
 
     class Meta:
-        constraints = [
-            models.UniqueConstraint(fields=['user', 'question'], name='unique_card_question_per_user'),
-        ]
+        # No unique question per user: copying a card into another topic makes
+        # an independent card with the same text (decision 3). Adding a new
+        # card by hand still warns about duplicates (forms / the app).
         ordering = ['next_review_at']
 
     def __str__(self):
@@ -157,3 +167,30 @@ class Tombstone(models.Model):
     kind = models.CharField(max_length=10, choices=[(KIND_CARD, 'Card'), (KIND_COLLECTION, 'Collection'), (KIND_TOPIC_RUN, 'Topic run')])
     uuid = models.UUIDField()
     deleted_at = models.DateTimeField(default=timezone.now, db_index=True)
+
+
+class TopicSubscription(models.Model):
+    """Someone else's topic the user "added to themselves": read-only, always
+    the author's current version (decision 2)."""
+
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='subscriptions')
+    collection = models.ForeignKey(Collection, on_delete=models.CASCADE, related_name='subscriptions')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['user', 'collection'], name='unique_subscription')]
+
+
+class PoolEvent(models.Model):
+    """A change of a card's blitz membership pushed by a device: 'reset'
+    (put into the blitz from scratch / reset progress) or 'remove' (take out
+    of the blitz). Kept so a re-sent event is applied only once."""
+
+    ACTION_RESET = 'reset'
+    ACTION_REMOVE = 'remove'
+
+    uuid = models.UUIDField(unique=True)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='+')
+    card = models.ForeignKey(Card, on_delete=models.CASCADE, related_name='pool_events')
+    action = models.CharField(max_length=10, choices=[(ACTION_RESET, 'Reset'), (ACTION_REMOVE, 'Remove')])
+    at = models.DateTimeField()

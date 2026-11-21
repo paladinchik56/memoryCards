@@ -192,9 +192,30 @@ class SyncTests(ApiTestCase):
         card = Card.objects.get(uuid=ku)
         self.assertEqual((card.user, card.collection.uuid, card.correct_count), (self.alice, cu, 1))
 
-    def test_duplicate_question_is_rejected(self):
+    def test_same_question_is_allowed_for_copies(self):
         data = self.sync(cards=[{'uuid': str(uuid.uuid4()), 'question': 'Hund', 'answer': 'x', 'content_updated_at': iso(timezone.now())}])
-        self.assertEqual(data['rejected'][0]['reason'], 'duplicate_question')
+        self.assertEqual(data['rejected'], [])
+        self.assertEqual(Card.objects.filter(user=self.alice, question='Hund').count(), 2)
+
+    def test_card_created_as_topic_copy_is_not_in_blitz(self):
+        ku = uuid.uuid4()
+        self.sync(cards=[{'uuid': str(ku), 'question': 'Q', 'answer': 'A', 'in_pool': False, 'content_updated_at': iso(timezone.now())}])
+        self.assertFalse(Card.objects.get(uuid=ku).in_pool)
+
+    def test_pool_events_remove_and_reset_idempotently(self):
+        from cards.services import apply_review
+        apply_review(self.card, True)
+        remove = {'uuid': str(uuid.uuid4()), 'card': str(self.card.uuid), 'action': 'remove', 'at': iso(timezone.now())}
+        data = self.sync(pool=[remove])
+        self.assertFalse(data['cards'][0]['in_pool'])
+        reset = {'uuid': str(uuid.uuid4()), 'card': str(self.card.uuid), 'action': 'reset', 'at': iso(timezone.now())}
+        self.sync(pool=[reset])
+        self.card.refresh_from_db()
+        self.assertEqual((self.card.in_pool, self.card.correct_count), (True, 0))
+        apply_review(self.card, True)
+        self.sync(pool=[reset])  # re-sent: must not wipe the newer review
+        self.card.refresh_from_db()
+        self.assertEqual(self.card.correct_count, 1)
 
     def test_later_content_edit_wins_and_review_does_not_count_as_edit(self):
         edited_on_phone = timezone.now()
@@ -268,3 +289,88 @@ class SyncTests(ApiTestCase):
     def test_deleting_a_user_does_not_crash_on_tombstones(self):
         self.alice.delete()
         self.assertTrue(Tombstone.objects.filter(kind='card').exists())
+
+
+class TopicsFeaturesTests(ApiTestCase):
+    """Added topics, adding someone's cards to the blitz, copying, author page, account."""
+
+    def setUp(self):
+        super().setUp()
+        self.topic = Collection.objects.create(owner=self.bob, name='Physics', visibility='public', tags=['physics'])
+        self.k1 = Card.objects.create(user=self.bob, question='Ohm', answer='I=U/R', collection=self.topic)
+        self.k2 = Card.objects.create(user=self.bob, question='Joule', answer='Q=I2Rt', collection=self.topic)
+        self.mine = Collection.objects.create(owner=self.alice, name='Mine')
+
+    def url(self, name):
+        return reverse(f'api:{name}', args=[self.topic.share_token])
+
+    def test_subscribe_shows_up_in_sync_read_only(self):
+        self.assertTrue(self.client.post(self.url('subscribe')).json()['is_added'])
+        added = self.sync()['added_topics']
+        self.assertEqual([(t['name'], len(t['cards']), t['tags']) for t in added], [('Physics', 2, ['physics'])])
+        self.assertFalse(Card.objects.filter(user=self.alice).exists())  # nothing copied
+        self.client.delete(self.url('subscribe'))
+        self.assertEqual(self.sync()['added_topics'], [])
+
+    def test_add_foreign_cards_to_blitz_as_linked_copies_with_skip_and_reset(self):
+        r = self.client.post(self.url('add_to_blitz'), {'cards': [str(self.k1.uuid)]}, format='json').json()
+        self.assertEqual(r, {'added': 1, 'reset': 0, 'skipped': 0})
+        copy = Card.objects.get(user=self.alice, source_card=self.k1)
+        self.assertTrue(copy.in_pool)
+        from cards.services import apply_review
+        apply_review(copy, True)
+        both = [str(self.k1.uuid), str(self.k2.uuid)]
+        r = self.client.post(self.url('add_to_blitz'), {'cards': both}, format='json').json()
+        self.assertEqual(r, {'added': 1, 'reset': 0, 'skipped': 1})
+        r = self.client.post(self.url('add_to_blitz'), {'cards': both, 'reset': [str(self.k1.uuid)]}, format='json').json()
+        self.assertEqual(r, {'added': 0, 'reset': 1, 'skipped': 1})
+        copy.refresh_from_db()
+        self.assertEqual(copy.correct_count, 0)
+        flags = {c['question']: c['in_blitz'] for c in self.client.get(self.url('shared')).json()['cards']}
+        self.assertEqual(flags, {'Ohm': True, 'Joule': True})
+        synced = {c['question']: c['source_collection'] for c in self.sync()['cards']}
+        self.assertEqual(synced['Ohm'], str(self.topic.uuid))
+
+    def test_copy_into_own_topic_not_into_blitz(self):
+        r = self.client.post(self.url('copy'), {'cards': [str(self.k1.uuid)], 'target': str(self.mine.uuid)}, format='json')
+        self.assertEqual(r.json(), {'copied': 1})
+        copy = Card.objects.get(user=self.alice, collection=self.mine)
+        self.assertFalse(copy.in_pool)
+
+    def test_copy_into_someone_elses_topic_is_refused(self):
+        r = self.client.post(self.url('copy'), {'cards': [str(self.k1.uuid)], 'target': str(self.topic.uuid)}, format='json')
+        self.assertEqual(r.status_code, 400)
+
+    def test_private_topic_cannot_be_added(self):
+        self.topic.visibility = 'private'
+        self.topic.save()
+        self.assertEqual(self.client.post(self.url('subscribe')).status_code, 404)
+        self.assertEqual(self.client.post(self.url('add_to_blitz'), {'cards': [str(self.k1.uuid)]}, format='json').status_code, 404)
+
+    def test_topic_run_on_added_topic(self):
+        self.client.post(self.url('subscribe'))
+        self.sync(topic_runs=[{'collection': str(self.topic.uuid), 'round': 1, 'queue': [str(self.k1.uuid)], 'wrong': [],
+                               'round_total': 2, 'correct_count': 1, 'updated_at': iso(timezone.now())}])
+        run = self.sync()['topic_runs'][0]
+        self.assertEqual(run['queue'], [str(self.k1.uuid)])
+
+    def test_author_page_and_tags_in_library(self):
+        lib = self.client.get(reverse('api:library')).json()
+        self.assertEqual(lib[0]['tags'], ['physics'])
+        page = self.client.get(reverse('api:author', args=['bob'])).json()
+        self.assertEqual((page['nickname'], [t['name'] for t in page['topics']]), ('Bob', ['Physics']))
+
+    def test_collection_tags_sync(self):
+        cu = uuid.uuid4()
+        self.sync(collections=[{'uuid': str(cu), 'name': 'T', 'tags': ['a', 'b'], 'updated_at': iso(timezone.now())}])
+        self.assertEqual(Collection.objects.get(uuid=cu).tags, ['a', 'b'])
+
+    def test_change_nickname_and_password(self):
+        bad = self.client.post(reverse('api:account'), {'current_password': 'nope', 'nickname': 'Alicia'}, format='json')
+        self.assertEqual(bad.status_code, 400)
+        taken = self.client.post(reverse('api:account'), {'current_password': 'pw12345', 'nickname': 'bob'}, format='json')
+        self.assertEqual(taken.json()['fields']['nickname'], ['taken'])
+        ok = self.client.post(reverse('api:account'), {'current_password': 'pw12345', 'nickname': 'Alicia', 'new_password': 'n3w-Passw0rd!'}, format='json')
+        self.assertEqual(ok.json()['nickname'], 'Alicia')
+        self.alice.refresh_from_db()
+        self.assertTrue(self.alice.check_password('n3w-Passw0rd!'))

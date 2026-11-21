@@ -88,3 +88,61 @@ def take_into_own_copy(user, source):
     if earlier:
         return Collection.objects.get(pk=earlier)
     return Collection.objects.create(owner=user, name=source.name, description=source.description)
+
+
+def reset_into_pool(card, at=None):
+    """Put `card` into the blitz from scratch (or reset its progress there)."""
+    card.in_pool = True
+    card.stage = 0
+    card.correct_count = 0
+    card.is_reviewed = False
+    card.next_review_at = at or timezone.now()
+    card.save(update_fields=['in_pool', 'stage', 'correct_count', 'is_reviewed', 'next_review_at', 'updated_at'])
+
+
+def remove_from_pool(card):
+    card.in_pool = False
+    card.save(update_fields=['in_pool', 'updated_at'])
+
+
+def add_foreign_to_pool(user, source_cards, reset_uuids=()):
+    """Decision 15 ("A'"): someone else's card enters the user's blitz as a
+    personal copy linked to the original. Returns (added, reset, skipped).
+
+    Already in the blitz -> skipped, or progress reset if its original's uuid
+    is in `reset_uuids`. A copy that was taken out of the blitz comes back
+    from scratch. The user's own cards are handled the same way, in place.
+    """
+    added = reset = skipped = 0
+    reset_uuids = set(reset_uuids)
+    for src in source_cards:
+        if src.user_id == user.id:
+            mine = src
+        else:
+            mine = Card.objects.filter(user=user, source_card=src).first()
+        if mine is None:
+            Card.objects.create(
+                user=user, question=src.question, answer=src.answer, collection=None,
+                source_collection=src.collection, source_card=src, in_pool=True,
+            )
+            added += 1
+        elif not mine.in_pool:
+            reset_into_pool(mine)
+            added += 1
+        elif src.uuid in reset_uuids:
+            reset_into_pool(mine)
+            reset += 1
+        else:
+            skipped += 1
+    return added, reset, skipped
+
+
+def copy_into_topic(user, source_cards, target):
+    """Independent copies in one of the user's own topics, not in the blitz."""
+    copies = [
+        Card(user=user, question=c.question, answer=c.answer, collection=target,
+             source_collection=c.collection, in_pool=False)
+        for c in source_cards
+    ]
+    Card.objects.bulk_create(copies)
+    return len(copies)

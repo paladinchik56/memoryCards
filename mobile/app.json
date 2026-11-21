@@ -18,7 +18,10 @@
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.paladinchik.cards"
+      "package": "com.paladinchik.cards",
+      "permissions": [
+        "android.permission.POST_NOTIFICATIONS"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -27,11 +30,24 @@
       "expo-router",
       "expo-sqlite",
       "expo-secure-store",
-      "expo-localization"
+      "expo-localization",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "usesCleartextTraffic": true
+          }
+        }
+      ],
+      "expo-notifications",
+      "expo-font"
     ],
     "scheme": "cards",
     "experiments": {
       "typedRoutes": false
+    },
+    "extra": {
+      "defaultServer": "http://192.168.0.65:8000"
     }
   }
 }

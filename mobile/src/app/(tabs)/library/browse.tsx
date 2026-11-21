@@ -22,7 +22,7 @@ export default function Browse() {
   const shown = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!topics || !q) return topics ?? [];
-    return topics.filter((tp) => `${tp.name} ${tp.description}`.toLowerCase().includes(q));
+    return topics.filter((tp) => `${tp.name} ${tp.description} ${tp.tags.join(' ')}`.toLowerCase().includes(q));
   }, [topics, query]);
 
   return (
@@ -32,7 +32,8 @@ export default function Browse() {
         <Icon name="search" size={18} color={colors.muted} />
         <TextInput
           style={{ flex: 1, color: colors.fg, fontSize: 15 }} value={query} onChangeText={setQuery}
-          placeholder={t('lib.search')} placeholderTextColor={colors.muted}
+          placeholder={t('lib.search')}
+          autoCorrect={false} placeholderTextColor={colors.muted}
         />
       </View>
       {failed ? <Muted style={st.msg}>{t('lib.offline')}</Muted> : !topics ? <ActivityIndicator style={{ marginTop: 40 }} /> : (
@@ -43,7 +44,7 @@ export default function Browse() {
           renderItem={({ item }) => (
             <Row
               title={item.name}
-              subtitle={[t('lib.by', { name: item.owner }), item.description].filter(Boolean).join(' · ')}
+              subtitle={[t('lib.by', { name: item.owner }), item.tags.map((tag) => `#${tag}`).join(' '), item.description].filter(Boolean).join(' · ')}
               value={String(item.card_count)}
               onPress={() => router.push(`/library/shared/${item.share_token}`)}
             />

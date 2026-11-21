@@ -2,7 +2,7 @@
 import { router, useFocusEffect } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback, useState } from 'react';
-import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Icon, Muted, Pill, Screen, type IconName } from '@/components/ui';
 import { countDue, stats } from '@/lib/db';
@@ -44,7 +44,7 @@ export default function Study() {
         <Muted style={st.caption}>{due === 0 && total === 0 ? t('blitz.empty') : t('study.dueCaption')}</Muted>
         <Pill title={t('study.start')} onPress={() => router.push('/blitz')} style={st.start} />
         <View style={st.actions}>
-          {action('layers', t('study.simple'), () => Alert.alert(t('study.simple'), t('study.simpleSoon')))}
+          {action('layers', t('study.simple'), () => router.push('/simple'))}
           {action('plus', t('study.add'), () => router.push('/add-card'))}
           {action('list', t('study.all'), () => router.push('/cards'))}
         </View>

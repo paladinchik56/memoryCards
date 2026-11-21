@@ -18,7 +18,7 @@ LEVEL_SIZE = 5
 
 def get_learned_count(user) -> int:
     """Number of this user's cards that reached the last stage of the ladder."""
-    return Card.objects.filter(user=user, stage__gte=MAX_STAGE).count()
+    return Card.objects.filter(user=user, in_pool=True, stage__gte=MAX_STAGE).count()
 
 
 def get_user_level(user) -> int:

@@ -19,6 +19,7 @@ type Session = {
   api: Api | null;
   signIn: (server: string, login: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
+  setNickname: (nickname: string) => Promise<void>;
   syncing: boolean;
   syncError: boolean;
   lastSync: string | null;
@@ -112,9 +113,14 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     setAuth({ server, token: res.token, nickname: res.user.nickname });
   }, [db]);
 
+  const setNickname = useCallback(async (nickname: string) => {
+    await SecureStore.setItemAsync(KEYS.nickname, nickname);
+    setAuth((a) => (a ? { ...a, nickname } : a));
+  }, []);
+
   const value = useMemo<Session>(
-    () => ({ ready, auth, api, signIn, signOut, syncing, syncError, lastSync, revision, syncNow, scheduleSync }),
-    [ready, auth, api, signIn, signOut, syncing, syncError, lastSync, revision, syncNow, scheduleSync],
+    () => ({ ready, auth, api, signIn, signOut, setNickname, syncing, syncError, lastSync, revision, syncNow, scheduleSync }),
+    [ready, auth, api, signIn, signOut, setNickname, syncing, syncError, lastSync, revision, syncNow, scheduleSync],
   );
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

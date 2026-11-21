@@ -1,9 +1,9 @@
 import { router, useFocusEffect } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback, useState } from 'react';
-import { ScrollView } from 'react-native';
+import { Pressable, ScrollView } from 'react-native';
 
-import { Row, Screen, TopBar } from '@/components/ui';
+import { Icon, Row, Screen, TopBar } from '@/components/ui';
 import { collections, noTopicCount, type Collection } from '@/lib/db';
 import { useSession } from '@/lib/session';
 import { useSettings } from '@/lib/settings';
@@ -22,7 +22,10 @@ export default function MyTopics() {
 
   return (
     <Screen>
-      <TopBar left="chevron-left" onLeft={() => router.back()} title={t('lib.mine')} />
+      <TopBar
+        left="chevron-left" onLeft={() => router.back()} title={t('lib.mine')}
+        right={<Pressable onPress={() => router.push('/topic-edit')} hitSlop={10}><Icon name="plus" size={24} /></Pressable>}
+      />
       <ScrollView contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 40 }}>
         {list.map((c) => (
           <Row key={c.uuid} title={c.name} subtitle={t('lib.cardsN', { n: c.count })} onPress={() => router.push(`/library/topic/${c.uuid}`)} />

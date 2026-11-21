@@ -5,8 +5,9 @@
 import { router } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useEffect, useRef, useState, type ComponentRef } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
+import { ChoiceSheet } from '@/components/sheet';
 import { Chip, Muted, Pill, Screen, TopBar } from '@/components/ui';
 import { addCard, collections, DuplicateQuestion, getMeta, setMeta, type Collection } from '@/lib/db';
 import { useSession } from '@/lib/session';
@@ -32,13 +33,7 @@ export default function AddCard() {
     })();
   }, [db]);
 
-  const chooseTopic = () => {
-    Alert.alert(t('add.chooseTopic'), undefined, [
-      { text: t('add.noTopic'), onPress: () => pick(null) },
-      ...topics.map((c) => ({ text: c.name, onPress: () => pick(c.uuid) })),
-      { text: t('common.cancel'), style: 'cancel' as const },
-    ]);
-  };
+  const [choosing, setChoosing] = useState(false);
   const pick = (uuid: string | null) => {
     setTopic(uuid);
     void setMeta(db, 'last_topic', uuid);
@@ -65,7 +60,7 @@ export default function AddCard() {
       <TopBar left="x" onLeft={() => router.back()} title={t('add.title')} />
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={st.wrap} keyboardShouldPersistTaps="handled">
-          <Chip title={topicName} icon="folder" active={!!topic} onPress={chooseTopic} />
+          <Chip title={topicName} icon="folder" active={!!topic} onPress={() => setChoosing(true)} />
           <View style={{ gap: 12, marginTop: 18 }}>
             <TextInput
               ref={questionRef} style={field} value={question} onChangeText={(v) => { setQuestion(v); setNote(null); }}
@@ -80,6 +75,11 @@ export default function AddCard() {
           {note ? <Text style={[st.note, { color: colors.fg }]}>{note}</Text> : <Muted style={st.note}> </Muted>}
         </ScrollView>
       </KeyboardAvoidingView>
+      <ChoiceSheet<string | null>
+        visible={choosing} title={t('add.chooseTopic')} selected={topic} onClose={() => setChoosing(false)}
+        choices={[{ label: t('add.noTopic'), value: null }, ...topics.map((c) => ({ label: c.name, value: c.uuid as string | null }))]}
+        onPick={pick}
+      />
     </Screen>
   );
 }

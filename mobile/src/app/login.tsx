@@ -11,7 +11,8 @@ import { useSettings } from '@/lib/settings';
 /** In development the Django server usually runs on the same computer as Metro. */
 function guessServer(): string {
   const host = Constants.expoConfig?.hostUri?.split(':')[0];
-  return host ? `http://${host}:8000` : 'http://192.168.0.1:8000';
+  if (host) return `http://${host}:8000`;
+  return (Constants.expoConfig?.extra?.defaultServer as string | undefined) ?? 'http://192.168.0.1:8000';
 }
 
 export default function Login() {

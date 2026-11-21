@@ -1,20 +1,24 @@
 /** Thin client for the Django API (/api/, see api/views.py on the server). */
 
 export class ApiError extends Error {
-  constructor(public status: number, public code: string) {
+  constructor(public status: number, public code: string, public fields?: Record<string, string[]>) {
     super(`${status} ${code}`);
   }
 }
 
-export type LibraryTopic = { share_token: string; name: string; description: string; owner: string; card_count: number };
+export type LibraryTopic = { share_token: string; name: string; description: string; tags: string[]; owner: string; card_count: number };
 export type SharedTopic = {
+  uuid: string;
   share_token: string;
   name: string;
   description: string;
+  tags: string[];
   owner: string;
   is_owner: boolean;
-  cards: { uuid: string; question: string; answer: string }[];
+  is_added: boolean;
+  cards: { uuid: string; question: string; answer: string; in_blitz: boolean }[];
 };
+export type User = { nickname: string; email: string };
 
 export function createApi(server: string, token: string | null) {
   const base = server.replace(/\/+$/, '');
@@ -42,7 +46,7 @@ export function createApi(server: string, token: string | null) {
     } catch {
       /* non-JSON error page */
     }
-    if (!res.ok) throw new ApiError(res.status, data?.error ?? 'http');
+    if (!res.ok) throw new ApiError(res.status, data?.error ?? 'http', data?.fields);
     return data as T;
   }
 
@@ -57,6 +61,15 @@ export function createApi(server: string, token: string | null) {
         `shared/${shareToken}/take/`, 'POST', cards ? { target, cards } : { target },
       ),
     sync: (payload: object) => request<SyncResponse>('sync/', 'POST', payload),
+    subscribe: (shareToken: string, add: boolean) =>
+      request<{ is_added: boolean }>(`shared/${shareToken}/subscribe/`, add ? 'POST' : 'DELETE'),
+    addToBlitz: (shareToken: string, cards: string[], reset: string[]) =>
+      request<{ added: number; reset: number; skipped: number }>(`shared/${shareToken}/blitz/`, 'POST', { cards, reset }),
+    copy: (shareToken: string, cards: string[], target: string) =>
+      request<{ copied: number }>(`shared/${shareToken}/copy/`, 'POST', { cards, target }),
+    author: (nickname: string) => request<{ nickname: string; topics: LibraryTopic[] }>(`authors/${encodeURIComponent(nickname)}/`),
+    account: (body: { current_password: string; nickname?: string; new_password?: string }) =>
+      request<User>('account/', 'POST', body),
   };
 }
 
@@ -67,6 +80,8 @@ export type ServerCard = {
   question: string;
   answer: string;
   collection: string | null;
+  source_collection: string | null;
+  in_pool: boolean;
   stage: number;
   correct_count: number;
   is_reviewed: boolean;
@@ -77,8 +92,11 @@ export type ServerCard = {
 
 export type SyncResponse = {
   server_time: string;
-  collections: { uuid: string; name: string; description: string; visibility: string; updated_at: string }[];
+  collections: { uuid: string; name: string; description: string; visibility: string; tags: string[]; updated_at: string }[];
   cards: ServerCard[];
+  topic_runs: { collection: string; round: number; queue: string[]; wrong: string[]; round_total: number; correct_count: number; updated_at: string }[];
+  added_topics: { uuid: string; share_token: string; name: string; description: string; tags: string[]; owner: string;
+                  cards: { uuid: string; question: string; answer: string }[] }[];
   deleted: { kind: string; uuid: string }[];
   rejected: { kind: string; uuid: string | null; reason: string }[];
 };

@@ -3,18 +3,24 @@ import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { ChoiceSheet } from '@/components/sheet';
 import { Chip, Muted, Row, Screen, Section } from '@/components/ui';
-import { stats } from '@/lib/db';
+import { exportCsv, stats } from '@/lib/db';
 import { formatDuration, LANGUAGES, type Language } from '@/lib/i18n';
+import { getReminder, REMINDER_TIMES, setReminder, shareCsv } from '@/lib/reminder';
 import { MAX_STAGE } from '@/lib/scheduler';
 import { useSession } from '@/lib/session';
 import { useSettings, type Appearance } from '@/lib/settings';
+
+type Picker = 'language' | 'appearance' | 'reminder' | null;
 
 export default function Profile() {
   const db = useSQLiteContext();
   const { colors, t, lang, setLang, appearance, setAppearance } = useSettings();
   const { auth, syncing, syncError, lastSync, revision, syncNow, signOut } = useSession();
   const [numbers, setNumbers] = useState({ total: 0, learned: 0, streak: 0 });
+  const [picker, setPicker] = useState<Picker>(null);
+  const [reminder, setReminderState] = useState<string | null>(getReminder);
 
   useFocusEffect(useCallback(() => { void stats(db, MAX_STAGE).then(setNumbers); }, [db, revision]));
 
@@ -28,17 +34,23 @@ export default function Profile() {
               : t('time.ago', { t: formatDuration(Date.now() - Date.parse(lastSync), t) }),
         });
 
-  const chooseLanguage = () => Alert.alert(t('profile.language'), undefined, [
-    ...(Object.keys(LANGUAGES) as Language[]).map((l) => ({ text: LANGUAGES[l], onPress: () => setLang(l) })),
-    { text: t('common.cancel'), style: 'cancel' as const },
-  ]);
-  const chooseAppearance = () => Alert.alert(t('profile.appearance'), undefined, [
-    ...(['system', 'light', 'dark'] as Appearance[]).map((a) => ({ text: t(`appearance.${a}`), onPress: () => setAppearance(a) })),
-    { text: t('common.cancel'), style: 'cancel' as const },
-  ]);
+  const pickReminder = async (time: string | null) => {
+    const ok = await setReminder(time, { title: t('reminder.title'), body: t('reminder.body') });
+    if (!ok) return Alert.alert(t('reminder.denied'));
+    setReminderState(time);
+  };
+
+  const exportCards = async () => {
+    try {
+      await shareCsv(await exportCsv(db));
+    } catch (e) {
+      Alert.alert(String(e));
+    }
+  };
+
   const logout = () => Alert.alert(t('profile.logout'), t('profile.logoutConfirm'), [
     { text: t('common.cancel'), style: 'cancel' },
-    { text: t('profile.logout'), style: 'destructive', onPress: () => void signOut() },
+    { text: t('profile.logout'), style: 'destructive', onPress: () => { void setReminder(null, { title: '', body: '' }); void signOut(); } },
   ]);
 
   const stat = (n: number, label: string) => (
@@ -70,17 +82,31 @@ export default function Profile() {
 
         <Section title={t('profile.study')} />
         <Row title={t('profile.algorithm')} onPress={() => router.push('/algorithm')} />
-        <Row title={t('profile.reminder')} value={t('profile.soon')} disabled />
+        <Row title={t('profile.reminder')} value={reminder ?? t('reminder.off')} onPress={() => setPicker('reminder')} />
 
         <Section title={t('profile.app')} />
-        <Row title={t('profile.language')} value={LANGUAGES[lang]} onPress={chooseLanguage} />
-        <Row title={t('profile.appearance')} value={t(`appearance.${appearance}`)} onPress={chooseAppearance} />
+        <Row title={t('profile.language')} value={LANGUAGES[lang]} onPress={() => setPicker('language')} />
+        <Row title={t('profile.appearance')} value={t(`appearance.${appearance}`)} onPress={() => setPicker('appearance')} />
 
         <Section title={t('profile.account')} />
-        <Row title={t('profile.nickPassword')} value={t('profile.soon')} disabled />
-        <Row title={t('profile.export')} value={t('profile.soon')} disabled />
+        <Row title={t('profile.nickPassword')} onPress={() => router.push('/account')} />
+        <Row title={t('profile.export')} value="CSV" onPress={() => void exportCards()} />
         <Row title={t('profile.logout')} onPress={logout} chevron={false} />
       </ScrollView>
+
+      <ChoiceSheet<Language>
+        visible={picker === 'language'} title={t('profile.language')} selected={lang} onClose={() => setPicker(null)}
+        choices={(Object.keys(LANGUAGES) as Language[]).map((l) => ({ label: LANGUAGES[l], value: l }))} onPick={setLang}
+      />
+      <ChoiceSheet<Appearance>
+        visible={picker === 'appearance'} title={t('profile.appearance')} selected={appearance} onClose={() => setPicker(null)}
+        choices={(['system', 'light', 'dark'] as Appearance[]).map((a) => ({ label: t(`appearance.${a}`), value: a }))} onPick={setAppearance}
+      />
+      <ChoiceSheet<string | null>
+        visible={picker === 'reminder'} title={t('profile.reminder')} selected={reminder} onClose={() => setPicker(null)}
+        choices={[{ label: t('reminder.off'), value: null }, ...REMINDER_TIMES.map((time) => ({ label: time, value: time }))]}
+        onPick={(v) => void pickReminder(v)}
+      />
     </Screen>
   );
 }
