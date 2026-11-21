@@ -810,3 +810,26 @@ class SeedElectricalTests(TestCase):
         topic = Collection.objects.get(owner=user, name='Электротехника')
         self.assertEqual(topic.visibility, Collection.VISIBILITY_PUBLIC)
         self.assertEqual(topic.cards.count(), 30)
+
+
+class ImportTopicTests(TestCase):
+    def test_import_creates_then_updates_without_duplicates(self):
+        import json
+        import tempfile
+        from django.core.management import call_command
+        from accounts.models import Profile
+        user = User.objects.create_user('a@example.com', password='pw')
+        Profile.objects.create(user=user, nickname='admin')
+        data = {'name': 'T', 'description': 'd', 'tags': ['x'], 'visibility': 'public',
+                'cards': [{'q': 'q1', 'a': 'a1'}, {'q': 'q2', 'a': 'a2'}]}
+        with tempfile.NamedTemporaryFile('w', suffix='.json', delete=False, encoding='utf-8') as f:
+            json.dump(data, f)
+        call_command('import_topic', f.name, stdout=open('/dev/null', 'w'))
+        data['cards'][0]['a'] = 'changed'
+        data['cards'].append({'q': 'q3', 'a': 'a3'})
+        with open(f.name, 'w', encoding='utf-8') as g:
+            json.dump(data, g)
+        call_command('import_topic', f.name, stdout=open('/dev/null', 'w'))
+        topic = Collection.objects.get(owner=user, name='T')
+        self.assertEqual((topic.visibility, topic.tags, topic.cards.count()), ('public', ['x'], 3))
+        self.assertEqual(topic.cards.get(question='q1').answer, 'changed')

@@ -6,3 +6,6 @@ db.sqlite3
 
 # Local IDE (WebStorm) MCP server config
 .mcp.json
+
+# Personal study materials (source for cards, not part of the project)
+/my content/
