@@ -44,3 +44,15 @@ test('never the same card twice in a row; overdue first', () => {
   ];
   for (let i = 0; i < 20; i++) assert.equal(chooseNext(mixed, now, newState(), rng)!.uuid, 'late');
 });
+
+import { hasMath, mathToPlain, splitMath, texToPlain } from '../src/lib/math';
+
+test('LaTeX: delimiters, and a single $ stays plain text', () => {
+  assert.equal(hasMath('echo $HOME $(date) $((3+5))'), false);
+  assert.equal(hasMath('R = \\(\\frac{U}{I}\\)'), true);
+  assert.deepEqual(splitMath('a $$x^2$$ b'), [{ text: 'a ' }, { tex: 'x^2', display: true }, { text: ' b' }]);
+  assert.equal(texToPlain('\\frac{U}{I}'), 'U/I');
+  assert.equal(texToPlain('P = I^2 R_{12}'), 'P = I² R₁₂');
+  assert.equal(texToPlain('\\varepsilon_0 \\cdot \\frac{A}{l}'), 'ε₀ · A/l');
+  assert.equal(mathToPlain('Ohm: \\(R = \\frac{U}{I}\\)'), 'Ohm: R = U/I');
+});

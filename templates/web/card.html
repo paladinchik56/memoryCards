@@ -1,0 +1,21 @@
+{% extends 'base.html' %}
+{% block title %}{{ t.card_title }}{% endblock %}
+{% block content %}
+<div class="top">
+    <span class="side"><a class="icon-link" href="{{ back }}">✕</a></span>
+    <span class="title">{{ t.card_title }}</span><span class="side right"></span>
+</div>
+<form method="post" class="stack">{% csrf_token %}
+    <input type="hidden" name="next" value="{{ back }}">
+    <textarea class="field" name="question" placeholder="{{ t.add_question }}">{{ card.question }}</textarea>
+    <textarea class="field" name="answer" placeholder="{{ t.add_answer }}">{{ card.answer }}</textarea>
+    <p class="muted small">{{ status }}</p>
+    <button class="btn" name="op" value="save">{{ t.card_save }}</button>
+    {% if card.in_pool %}
+        <button class="btn ghost" name="op" value="blitz" data-confirm="{{ t.card_reset_confirm }}">{{ t.card_reset }}</button>
+    {% else %}
+        <button class="btn ghost" name="op" value="blitz">{{ t.card_add_to_blitz }}</button>
+    {% endif %}
+    <button class="text-btn" name="op" value="delete" data-confirm="{{ t.card_delete_confirm }}">{{ t.card_delete }}</button>
+</form>
+{% endblock %}

@@ -1,0 +1,14 @@
+{% extends 'base.html' %}
+{% load web_extras %}
+{% block title %}{{ nickname }}{% endblock %}
+{% block content %}
+<div class="top"><span class="side"><a class="icon-link" href="javascript:history.back()">‹</a></span><span class="title"></span><span class="side right"></span></div>
+<div class="center">
+    <div class="avatar" style="width:84px;height:84px;margin:8px auto 0;font-size:30px">{{ nickname|first|upper }}</div>
+    <h1 style="font-size:24px;margin-top:12px">{{ nickname }}</h1>
+    <div class="muted small">{% with n=topics|length %}{{ t.lib_author_topics|fill:n }}{% endwith %}</div>
+</div>
+<div class="list">{% for c in topics %}
+    <a class="row" href="{% url 'web:topic' c.share_token %}"><div class="main"><div class="title">{{ c.name }}</div><div class="sub">{{ t.lib_cards_n|fill:c.n }}</div></div><span class="chev">›</span></a>
+{% endfor %}</div>
+{% endblock %}

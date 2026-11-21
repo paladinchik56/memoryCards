@@ -7,6 +7,7 @@ import { FlatList, StyleSheet, Text, View } from 'react-native';
 import { Muted, Screen, TopBar } from '@/components/ui';
 import { blitzCards, type Card } from '@/lib/db';
 import { formatDuration } from '@/lib/i18n';
+import { mathToPlain } from '@/lib/math';
 import { useSettings } from '@/lib/settings';
 
 export default function Cards() {
@@ -29,8 +30,8 @@ export default function Cards() {
           <View style={[st.row, { borderBottomColor: colors.line }]}>
             <View style={{ flex: 1 }}>
               <Muted style={st.topic}>{item.topic ?? t('lib.noTopic')}</Muted>
-              <Text style={[st.q, { color: colors.fg }]}>{item.question}</Text>
-              <Muted style={st.a}>{item.answer}</Muted>
+              <Text style={[st.q, { color: colors.fg }]}>{mathToPlain(item.question)}</Text>
+              <Muted style={st.a}>{mathToPlain(item.answer)}</Muted>
             </View>
             <Muted style={st.when}>{item.next_review_at <= now ? t('cards.now') : formatDuration(item.next_review_at - now, t)}</Muted>
           </View>

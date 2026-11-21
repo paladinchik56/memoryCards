@@ -52,6 +52,7 @@ INSTALLED_APPS = [
     'accounts',
     'cards',
     'api',
+    'web',
 ]
 
 # Mobile app API (/api/): token auth only -- no session/CSRF on the API.
@@ -85,6 +86,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'web.i18n.context',
             ],
         },
     },
@@ -154,7 +156,7 @@ STATICFILES_DIRS = [BASE_DIR / 'static']
 # https://docs.djangoproject.com/en/6.1/ref/settings/#login-redirect-url
 
 LOGIN_URL = 'login'
-LOGIN_REDIRECT_URL = 'home'
+LOGIN_REDIRECT_URL = 'web:study'
 LOGOUT_REDIRECT_URL = 'home'
 
 

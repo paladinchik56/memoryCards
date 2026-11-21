@@ -1,0 +1,21 @@
+{% extends 'base.html' %}
+{% block title %}{{ t.simple_title }}{% endblock %}
+{% block content %}
+<div class="top">
+    <span class="side"><a class="icon-link" href="{% url 'web:study' %}">‹</a></span>
+    <span class="title">{{ t.simple_title }}</span><span class="side right"></span>
+</div>
+{% if not own and not added %}<p class="empty">{{ t.simple_no_topics }}</p>{% endif %}
+{% if own %}
+<div class="section">{{ t.lib_mine }}</div>
+<div class="list">{% for s in own %}
+    <a class="row" href="{% url 'web:simple_topic' s.uuid %}"><div class="main"><div class="title">{{ s.name }}</div><div class="sub">{{ s.status }}</div></div><span class="chev">›</span></a>
+{% endfor %}</div>
+{% endif %}
+{% if added %}
+<div class="section">{{ t.lib_added }}</div>
+<div class="list">{% for s in added %}
+    <a class="row" href="{% url 'web:simple_topic' s.uuid %}"><div class="main"><div class="title">{{ s.name }}</div><div class="sub">{{ s.owner }} · {{ s.status }}</div></div><span class="chev">›</span></a>
+{% endfor %}</div>
+{% endif %}
+{% endblock %}

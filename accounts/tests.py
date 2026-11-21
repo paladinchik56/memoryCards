@@ -187,8 +187,8 @@ class AuthenticationBackendTests(TestCase):
 
     def test_login_view_accepts_nickname(self):
         response = self.client.post(reverse('login'), {'username': 'CoolNick', 'password': 'pw12345'})
-        self.assertRedirects(response, reverse('home'))
+        self.assertRedirects(response, reverse('web:study'))
 
     def test_login_view_accepts_email(self):
         response = self.client.post(reverse('login'), {'username': 'login@example.com', 'password': 'pw12345'})
-        self.assertRedirects(response, reverse('home'))
+        self.assertRedirects(response, reverse('web:study'))

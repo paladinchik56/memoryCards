@@ -1,0 +1,14 @@
+{% extends 'base.html' %}
+{% block title %}{{ t.algo_title }}{% endblock %}
+{% block content %}
+<div class="top">
+    <span class="side"><a class="icon-link" href="{% url 'web:profile' %}">‹</a></span>
+    <span class="title">{{ t.algo_title }}</span><span class="side right"></span>
+</div>
+<p>{{ t.algo_intro }}</p>
+<table class="algo">
+    <tr><th>{{ t.algo_stage }}</th><th>{{ t.algo_interval }}</th><th>{{ t.algo_need }}</th></tr>
+    {% for r in rows %}<tr><td>{{ r.stage }}</td><td>{{ r.interval }}</td><td>{{ r.need }}</td></tr>{% endfor %}
+</table>
+<ul style="padding-left:18px;margin-top:22px">{% for rule in t.algo_rules %}<li style="margin-bottom:10px">{{ rule }}</li>{% endfor %}</ul>
+{% endblock %}

@@ -1,0 +1,25 @@
+{% extends 'base.html' %}
+{% load web_extras %}
+{% block title %}{{ t.conflict_confirm }}{% endblock %}
+{% block content %}
+<div class="top"><span class="side"><a class="icon-link" href="{{ back }}">✕</a></span><span class="title"></span><span class="side right"></span></div>
+<h1 style="font-size:24px">{% with n=conflicts|length %}{{ t.conflict_title|fill:n }}{% endwith %}</h1>
+<p class="muted">{{ t.conflict_hint|fill:new_count }}</p>
+<form method="post" action="{% url 'web:topic_action' %}">{% csrf_token %}
+    <input type="hidden" name="source" value="{{ source }}">
+    <input type="hidden" name="action" value="to_blitz">
+    <input type="hidden" name="confirm" value="1">
+    {% for c in cards %}<input type="hidden" name="cards" value="{{ c.uuid }}">{% endfor %}
+    <div class="list">{% for c in conflicts %}
+        <div class="row conflict">
+            <div class="main">{{ c.question }}</div>
+            <div class="seg" style="flex:none">
+                <label><input type="radio" name="choice-{{ c.uuid }}" value="skip" checked>{{ t.conflict_skip }}</label>
+                <label><input type="radio" name="choice-{{ c.uuid }}" value="reset">{{ t.conflict_reset }}</label>
+            </div>
+        </div>
+    {% endfor %}</div>
+    <label class="check-row" style="border-top:0"><input type="checkbox" id="apply-all" checked> {{ t.conflict_all }}</label>
+    <button class="btn" type="submit" style="margin-top:12px">{{ t.conflict_confirm }}</button>
+</form>
+{% endblock %}

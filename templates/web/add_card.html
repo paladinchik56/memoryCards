@@ -1,0 +1,21 @@
+{% extends 'base.html' %}
+{% block title %}{{ t.add_title }}{% endblock %}
+{% block content %}
+<div class="top">
+    <span class="side"><a class="icon-link" href="{% if next %}{{ next }}{% else %}{% url 'web:study' %}{% endif %}">✕</a></span>
+    <span class="title">{{ t.add_title }}</span><span class="side right"></span>
+</div>
+<form method="post" class="stack">{% csrf_token %}
+    <input type="hidden" name="next" value="{{ next }}">
+    <label class="label" for="topic">{{ t.add_topic }}</label>
+    <select class="select" name="topic" id="topic">
+        <option value="">{{ t.add_no_topic }}</option>
+        {% for c in topics %}<option value="{{ c.uuid }}"{% if topic_uuid == c.uuid|stringformat:"s" %} selected{% endif %}>{{ c.name }}</option>{% endfor %}
+    </select>
+    <textarea class="field" name="question" placeholder="{{ t.add_question }}" autofocus>{{ question }}</textarea>
+    <textarea class="field" name="answer" placeholder="{{ t.add_answer }}">{{ answer }}</textarea>
+    <div class="hint-latex">LaTeX: <code>\( R = \frac{U}{I} \)</code> — {{ t.latex_inline }}, <code>$$ P = I^2 R $$</code> — {{ t.latex_block }}</div>
+    {% if error %}<div class="error">{{ error }}</div>{% endif %}
+    <button class="btn" type="submit">{{ t.add_submit }}</button>
+</form>
+{% endblock %}

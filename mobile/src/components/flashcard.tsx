@@ -5,6 +5,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Animated, PanResponder, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 
+import { MathText } from './math-text';
 import { Muted, Pill } from './ui';
 import { useSettings } from '@/lib/settings';
 
@@ -64,7 +65,7 @@ export function FlashCard({ cardKey, question, answer, onAnswer }: {
           <Pressable style={st.inner} onPress={() => setFlipped((f) => !f)}>
             <Text style={[st.face, { color: colors.muted }]}>{(flipped ? t('blitz.answer') : t('blitz.question')).toUpperCase()}</Text>
             <ScrollView contentContainerStyle={st.textWrap}>
-              <Text style={[st.text, { color: colors.fg }]}>{flipped ? answer : question}</Text>
+              <MathText key={flipped ? 'a' : 'q'} text={flipped ? answer : question} style={st.text} />
             </ScrollView>
             {!flipped ? <Muted style={{ fontSize: 13 }}>{t('blitz.tapToFlip')}</Muted> : null}
           </Pressable>

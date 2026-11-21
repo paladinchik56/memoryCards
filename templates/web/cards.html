@@ -1,0 +1,18 @@
+{% extends 'base.html' %}
+{% block title %}{{ t.cards_title }}{% endblock %}
+{% block content %}
+<div class="top">
+    <span class="side"><a class="icon-link" href="{% url 'web:study' %}">‹</a></span>
+    <span class="title">{{ t.cards_title }}</span><span class="side right"></span>
+</div>
+{% if rows %}
+<table class="qa">
+    <tr><th>{{ t.col_topic }}</th><th>{{ t.col_question }}</th><th>{{ t.col_answer }}</th><th class="when" style="text-align:right">{{ t.col_next }}</th></tr>
+    {% for r in rows %}
+    <tr class="link" data-href="{% url 'web:card' r.uuid %}?next={{ request.path|urlencode }}">
+        <td class="small muted">{{ r.topic }}</td><td>{{ r.question }}</td><td class="a">{{ r.answer }}</td><td class="when">{{ r.when }}</td>
+    </tr>
+    {% endfor %}
+</table>
+{% else %}<p class="empty">{{ t.cards_empty }}</p>{% endif %}
+{% endblock %}

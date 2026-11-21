@@ -1,0 +1,23 @@
+{% extends 'base.html' %}
+{% block title %}{{ collection.name }}{% endblock %}
+{% block content %}
+<div class="top">
+    <span class="side"><a class="icon-link" href="{% url 'web:simple' %}">‹</a></span>
+    <span class="title"></span><span class="side right"></span>
+</div>
+<div class="result" style="min-height:60vh">
+    <h1>{{ collection.name }}</h1>
+    {% if finished %}
+        <p class="muted">{{ t.simple_topic_done }}</p>
+        <form method="post" action="{% url 'web:simple_restart' collection.uuid %}" style="width:100%">{% csrf_token %}
+            <button class="btn first" type="submit">{{ t.simple_again }}</button>
+        </form>
+    {% else %}
+        <p class="muted">{{ continue_text }}</p>
+        <a class="btn first" href="{% url 'web:simple_play' collection.uuid %}">{{ t.simple_continue }}</a>
+        <form method="post" action="{% url 'web:simple_restart' collection.uuid %}" style="width:100%">{% csrf_token %}
+            <button class="btn ghost" type="submit" style="margin-top:12px">{{ t.simple_restart }}</button>
+        </form>
+    {% endif %}
+</div>
+{% endblock %}

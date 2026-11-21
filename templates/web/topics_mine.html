@@ -1,0 +1,17 @@
+{% extends 'base.html' %}
+{% load web_extras %}
+{% block title %}{{ t.lib_mine }}{% endblock %}
+{% block content %}
+<div class="top">
+    <span class="side"><a class="icon-link" href="{% url 'web:library' %}">‹</a></span>
+    <span class="title">{{ t.lib_mine }}</span>
+    <span class="side right"><a class="icon-link" href="{% url 'web:topic_new' %}" title="{{ t.lib_new_topic }}">+</a></span>
+</div>
+<div class="list">
+    {% for c in topics %}
+    <a class="row" href="{% url 'web:topic' c.share_token %}"><div class="main"><div class="title">{{ c.name }}</div>
+        <div class="sub">{{ t.lib_cards_n|fill:c.n }}{% with key="topic_"|add:c.visibility %} · {{ t|tt:key }}{% endwith %}</div></div><span class="chev">›</span></a>
+    {% endfor %}
+    <a class="row" href="{% url 'web:no_topic' %}"><div class="main"><div class="title">{{ t.lib_no_topic }}</div><div class="sub">{{ t.lib_cards_n|fill:no_topic }}</div></div><span class="chev">›</span></a>
+</div>
+{% endblock %}

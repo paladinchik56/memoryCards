@@ -1,0 +1,19 @@
+{% extends 'base.html' %}
+{% load web_extras %}
+{% block title %}{{ t.lib_browse }}{% endblock %}
+{% block content %}
+<div class="top">
+    <span class="side"><a class="icon-link" href="{% url 'web:library' %}">‹</a></span>
+    <span class="title">{{ t.lib_browse }}</span><span class="side right"></span>
+</div>
+<form method="get" class="search"><input class="field" type="search" name="q" value="{{ q }}" placeholder="{{ t.lib_search }}" autocomplete="off"></form>
+{% if rows %}
+<div class="list">{% for r in rows %}
+    <a class="row" href="{% url 'web:topic' r.topic.share_token %}">
+        <div class="main"><div class="title">{{ r.topic.name }}</div>
+            <div class="sub">{{ t.lib_by|fill:r.owner }}{% if r.topic.description %} · {{ r.topic.description|truncatechars:90 }}{% endif %}</div>
+            {% if r.topic.tags %}<div class="tags">{% for tag in r.topic.tags %}<span class="tag">{{ tag }}</span>{% endfor %}</div>{% endif %}
+        </div><span class="val">{{ r.n }}</span></a>
+{% endfor %}</div>
+{% else %}<p class="empty">{{ t.lib_nothing_found }}</p>{% endif %}
+{% endblock %}

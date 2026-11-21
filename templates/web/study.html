@@ -1,0 +1,15 @@
+{% extends 'base.html' %}
+{% block title %}{{ t.tab_study }}{% endblock %}
+{% block content %}
+<div class="pool">{{ total }} {{ t.study_in_blitz }}</div>
+<div class="hero">
+    <div class="big">{{ due }}</div>
+    <div class="caption">{% if due == 0 and total == 0 %}{{ t.blitz_empty }}{% else %}{{ t.study_due }}{% endif %}</div>
+    <a class="btn" href="{% url 'web:blitz' %}">{{ t.study_start }}</a>
+    <div class="circles">
+        <a class="circle-link" href="{% url 'web:simple' %}"><span class="c"><svg viewBox="0 0 24 24"><path d="M12 2 2 7l10 5 10-5-10-5z"/><path d="m2 12 10 5 10-5"/></svg></span>{{ t.study_simple }}</a>
+        <a class="circle-link" href="{% url 'web:add' %}"><span class="c"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></span>{{ t.study_add }}</a>
+        <a class="circle-link" href="{% url 'web:cards' %}"><span class="c"><svg viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01"/></svg></span>{{ t.study_all }}</a>
+    </div>
+</div>
+{% endblock %}

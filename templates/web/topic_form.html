@@ -1,0 +1,20 @@
+{% extends 'base.html' %}
+{% load web_extras %}
+{% block title %}{% if collection %}{{ t.lib_edit_topic }}{% else %}{{ t.lib_new_topic }}{% endif %}{% endblock %}
+{% block content %}
+<div class="top">
+    <span class="side"><a class="icon-link" href="{% if collection %}{% url 'web:topic' collection.share_token %}{% else %}{% url 'web:mine' %}{% endif %}">✕</a></span>
+    <span class="title">{% if collection %}{{ t.lib_edit_topic }}{% else %}{{ t.lib_new_topic }}{% endif %}</span><span class="side right"></span>
+</div>
+<form method="post" class="stack">{% csrf_token %}
+    <input class="field" name="name" value="{{ data.name }}" placeholder="{{ t.topic_name }}" maxlength="100" {% if not collection %}autofocus{% endif %}>
+    <textarea class="field" name="description" placeholder="{{ t.topic_description }}" maxlength="700">{{ data.description }}</textarea>
+    <input class="field" name="tags" value="{{ data.tags }}" placeholder="{{ t.topic_tags }}">
+    <span class="label">{{ t.topic_visibility }}</span>
+    <div class="seg">{% for value, key in visibilities %}
+        <label><input type="radio" name="visibility" value="{{ value }}"{% if data.visibility == value %} checked{% endif %}>{{ t|tt:key }}</label>
+    {% endfor %}</div>
+    {% if error %}<div class="error">{{ error }}</div>{% endif %}
+    <button class="btn" type="submit">{{ t.topic_save }}</button>
+</form>
+{% endblock %}

@@ -1,0 +1,15 @@
+{% extends 'base.html' %}
+{% load web_extras %}
+{% block title %}{{ t.lib_added }}{% endblock %}
+{% block content %}
+<div class="top">
+    <span class="side"><a class="icon-link" href="{% url 'web:library' %}">‹</a></span>
+    <span class="title">{{ t.lib_added }}</span><span class="side right"></span>
+</div>
+{% if topics %}
+<div class="list">{% for c, owner in topics %}
+    <a class="row" href="{% url 'web:topic' c.share_token %}"><div class="main"><div class="title">{{ c.name }}</div>
+        <div class="sub">{{ t.lib_by|fill:owner }} · {{ t.lib_cards_n|fill:c.n }}</div></div><span class="chev">›</span></a>
+{% endfor %}</div>
+{% else %}<p class="empty">{{ t.lib_no_added }}</p>{% endif %}
+{% endblock %}

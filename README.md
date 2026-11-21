@@ -13,6 +13,7 @@ A spaced-repetition flashcard app built with Django. Create cards, review them o
 - **Collections** — group your cards into named collections with three visibility levels: private, unlisted (share by link), or public (listed in the shared library).
 - **Shared library** — browse other users' public collections and copy ("take") individual cards into your own, starting fresh at stage 0.
 - **Topic runs** — go through a whole collection in rounds: each next round only has the cards you missed. Separate from the review schedule; progress is saved.
+- **LaTeX formulas** in cards: `\( R = \frac{U}{I} \)` inline, `$$ P = I^2 R $$` on its own line (a single `$` is plain text).
 - **Nickname or email login** — register with a nickname (shown as the author of shared collections) and sign in with either it or your email.
 - **Dark mode** — toggle in the top bar, remembered across visits.
 - **Test mode** — a toggle that compresses review intervals to seconds, for trying out the whole scheduling flow without waiting.

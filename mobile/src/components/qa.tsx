@@ -7,6 +7,7 @@ import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Checkbox } from './sheet';
 import { Muted, Title } from './ui';
+import { mathToPlain } from '@/lib/math';
 import { useSettings } from '@/lib/settings';
 
 export type QACard = { uuid: string; question: string; answer: string; inBlitz?: boolean };
@@ -57,10 +58,10 @@ export function QATable({ title, description, tags = [], meta, cards, header, se
         >
           {selecting ? <Checkbox on={selected.has(item.uuid)} /> : null}
           <View style={{ flex: 1 }}>
-            <Text style={[st.cell, { color: colors.fg }]}>{item.question}</Text>
+            <Text style={[st.cell, { color: colors.fg }]}>{mathToPlain(item.question)}</Text>
             {item.inBlitz ? <Muted style={{ fontSize: 11, marginTop: 3 }}>● {t('lib.inBlitzMark')}</Muted> : null}
           </View>
-          <Text style={[st.cell, { color: colors.muted }]}>{item.answer}</Text>
+          <Text style={[st.cell, { color: colors.muted }]}>{mathToPlain(item.answer)}</Text>
         </Pressable>
       )}
     />

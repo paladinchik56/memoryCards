@@ -1,0 +1,15 @@
+{% extends 'base.html' %}
+{% block title %}{{ t.account_title }}{% endblock %}
+{% block content %}
+<div class="top">
+    <span class="side"><a class="icon-link" href="{% url 'web:profile' %}">‹</a></span>
+    <span class="title">{{ t.account_title }}</span><span class="side right"></span>
+</div>
+<form method="post">{% csrf_token %}
+    <label class="label">{{ t.account_nickname }}</label><input class="field" name="nickname" value="{{ nickname }}" autocomplete="username">
+    <label class="label">{{ t.account_new_password }}</label><input class="field" type="password" name="new_password" autocomplete="new-password">
+    <label class="label">{{ t.account_current }}</label><input class="field" type="password" name="current_password" required autocomplete="current-password">
+    {% for e in errors %}<div class="error">{{ e }}</div>{% endfor %}
+    <button class="btn" type="submit" style="margin-top:20px">{{ t.account_save }}</button>
+</form>
+{% endblock %}

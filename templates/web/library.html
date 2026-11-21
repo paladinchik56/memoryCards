@@ -1,0 +1,11 @@
+{% extends 'base.html' %}
+{% load web_extras %}
+{% block title %}{{ t.lib_title }}{% endblock %}
+{% block content %}
+<h1>{{ t.lib_title }}</h1>
+<div class="list">
+    <a class="row" href="{% url 'web:mine' %}"><div class="main"><div class="title">{{ t.lib_mine }}</div><div class="sub">{{ t.lib_topics_n|fill:mine }}</div></div><span class="chev">›</span></a>
+    <a class="row" href="{% url 'web:added' %}"><div class="main"><div class="title">{{ t.lib_added }}</div><div class="sub">{{ t.lib_topics_n|fill:added }}</div></div><span class="chev">›</span></a>
+    <a class="row" href="{% url 'web:browse' %}"><div class="main"><div class="title">{{ t.lib_browse }}</div><div class="sub">{{ t.lib_browse_hint }}</div></div><span class="chev">›</span></a>
+</div>
+{% endblock %}

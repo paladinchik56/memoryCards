@@ -1,108 +1,47 @@
 <!DOCTYPE html>
-<html lang="en">
+{% load static %}
+<html lang="{{ lang }}">
 <head>
-    {% load static %}
-    <link rel="stylesheet" href="{% static 'css/site.css' %}">
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <title>{% block title %}Cards{% endblock %}</title>
     <script>
-        function applyTheme(theme) {
-            localStorage.setItem('theme', theme);
-            document.documentElement.setAttribute('data-theme', theme);
-        }
-        applyTheme(localStorage.getItem('theme') === 'dark' ? 'dark' : 'light');
+        // Appearance: system / light / dark, remembered per browser.
+        (function () {
+            var a = 'system';
+            try { a = localStorage.getItem('appearance') || 'system'; } catch (e) {}
+            if (a !== 'system') document.documentElement.setAttribute('data-theme', a);
+        })();
     </script>
-    <title>{% block title %}Django Project{% endblock %}</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+    <link rel="stylesheet" href="{% static 'web/site.css' %}">
 </head>
-<body{% if not user.is_authenticated %} class="no-tabbar"{% endif %}>
-
-<header class="topbar">
-
-    <a href="{% url 'home' %}" class="topbar-title">📇 Cards</a>
-    <button type="button" id="theme-toggle" class="icon-btn" title="Toggle theme">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="12" cy="12" r="4.5"/>
-          <path d="M12 2.5v2.5M12 19v2.5M4.2 4.2l1.8 1.8M18 18l1.8 1.8M2.5 12H5M19 12h2.5M4.2 19.8L6 18M18 6l1.8-1.8"/>
-        </svg>
-    </button>
-    {% if user.is_authenticated %}
-        <a href="{% url 'cards:list' %}" class="icon-btn" title="My cards">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                <line x1="6" y1="20" x2="6" y2="10"/>
-                <line x1="12" y1="20" x2="12" y2="4"/>
-                <line x1="18" y1="20" x2="18" y2="14"/>
-            </svg>
-        </a>
-    {% else %}
-        <div class="auth-links">
-            <a href="{% url 'login' %}">Log in</a>
-            <a href="{% url 'register' %}">Sign up</a>
-        </div>
+<body class="{% block body_class %}{% endblock %}{% if user.is_authenticated and tab %} has-tabs{% endif %}">
+<main class="page">
+    {% if messages %}
+        <div class="toasts">{% for message in messages %}<div class="toast">{{ message }}</div>{% endfor %}</div>
     {% endif %}
-</header>
-
-<main>
     {% block content %}{% endblock %}
 </main>
 
-{% if user.is_authenticated %}
-    <nav class="bottombar">
-        <a href="{% url 'cards:list' %}" class="tab{% if request.resolver_match.url_name == 'list' %} active{% endif %}">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="square" stroke-linejoin="miter">
-                <path d="M13 2 4 14h6l-1 8 9-12h-6l1-8z"/>
-            </svg>
-            Learn
-        </a>
-        <a href="{% url 'cards:collections' %}" class="tab{% if request.resolver_match.url_name == 'collections' or request.resolver_match.url_name == 'library' or request.resolver_match.url_name == 'collection_detail' or request.resolver_match.url_name == 'collection_view' %} active{% endif %}">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="square" stroke-linejoin="miter">
-                <rect x="3" y="7" width="14" height="14"/>
-                <rect x="7" y="3" width="14" height="14"/>
-            </svg>
-            Library
-        </a>
-        <details class="tab account-tab">
-            <summary>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="square" stroke-linejoin="miter">
-                    <path d="M12 2 20.5 7v10L12 22 3.5 17V7z"/>
-                    <circle cx="12" cy="12" r="3"/>
-                </svg>
-                Account
-            </summary>
-            <div class="account-panel">
-                <p>Logged in as {% firstof user.profile.nickname user.username %}</p>
-
-                <form action="{% url 'cards:toggle_test_mode' %}" method="post" class="icon-form">
-                    {% csrf_token %}
-                    <input type="hidden" name="next" value="{{ request.path }}">
-                    <button type="submit"
-                        title="Test mode {% if request.session.test_mode %}on{% else %}off{% endif %}">
-                        {% if request.session.test_mode %} test-mode: on{% else %}test-mode: off{% endif %}
-                    </button>
-                </form>
-
-                <form action="{% url 'logout' %}" method="post">
-                    {% csrf_token %}
-                    <button type="submit">Log out</button>
-                </form>
-            </div>
-        </details>
-    </nav>
+{% if user.is_authenticated and tab %}
+<nav class="tabs">
+    <a href="{% url 'web:study' %}" class="tab{% if tab == 'study' %} on{% endif %}">
+        <svg viewBox="0 0 24 24"><path d="M2 4h7a3 3 0 0 1 3 3v13a2 2 0 0 0-2-2H2z"/><path d="M22 4h-7a3 3 0 0 0-3 3v13a2 2 0 0 1 2-2h8z"/></svg>
+        <span>{{ t.tab_study }}</span>
+    </a>
+    <a href="{% url 'web:library' %}" class="tab{% if tab == 'library' %} on{% endif %}">
+        <svg viewBox="0 0 24 24"><path d="M12 2 2 7l10 5 10-5-10-5z"/><path d="m2 17 10 5 10-5"/><path d="m2 12 10 5 10-5"/></svg>
+        <span>{{ t.tab_library }}</span>
+    </a>
+    <a href="{% url 'web:profile' %}" class="tab{% if tab == 'profile' %} on{% endif %}">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>
+        <span>{{ t.tab_profile }}</span>
+    </a>
+</nav>
 {% endif %}
-
-<script>
-    function toggleTheme() {
-        let themaButton = document.getElementById('theme-toggle');
-        themaButton.addEventListener('click', function () {
-            let currentTheme = document.documentElement.getAttribute('data-theme');
-            let newTheme = currentTheme || 'light';
-            newTheme = newTheme === 'dark' ? 'light' : 'dark';
-            applyTheme(newTheme);
-        })
-
-    } toggleTheme() ;
-
-
-</script>
-
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
+<script defer src="{% static 'web/app.js' %}"></script>
 </body>
 </html>

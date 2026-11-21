@@ -4,6 +4,7 @@
 
 JSON: {"name": ..., "description": ..., "tags": [...], "visibility": "public",
        "cards": [{"q": "question", "a": "answer"}, ...]}
+or several topics at once: {"topics": [<topic>, <topic>, ...]}
 
 Idempotent: cards are matched by question within the topic; missing ones are
 added, changed answers are updated, nothing is deleted.
@@ -34,15 +35,18 @@ class Command(BaseCommand):
         profile = Profile.objects.filter(nickname__iexact=owner).select_related('user').first()
         if profile is None:
             raise CommandError(f'No user with nickname "{owner}".')
+        for topic_data in data.get('topics') or [data]:
+            self.import_one(profile.user, topic_data)
+
+    def import_one(self, user, data):
         cards = data.get('cards') or []
         questions = [c['q'].strip() for c in cards]
         if len(set(questions)) != len(questions):
-            raise CommandError('Duplicate questions in the file.')
+            raise CommandError(f'Duplicate questions in "{data.get("name")}".')
         visibility = data.get('visibility', Collection.VISIBILITY_PUBLIC)
         if visibility not in dict(Collection.VISIBILITY_CHOICES):
             raise CommandError(f'Bad visibility: {visibility}')
 
-        user = profile.user
         with transaction.atomic():
             topic, created = Collection.objects.get_or_create(owner=user, name=data['name'][:100])
             topic.description = data.get('description', '')[:700]

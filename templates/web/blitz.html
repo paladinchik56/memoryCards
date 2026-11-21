@@ -1,0 +1,73 @@
+{% extends 'base.html' %}
+{% load web_extras %}
+{% block title %}{{ t.study_start }}{% endblock %}
+{% block body_class %}focus{% endblock %}
+{% block content %}
+<div class="study-top">
+    <a class="icon-link" href="{% url 'web:study' %}" title="{{ t.close }}">✕</a>
+    <details class="panel" style="flex:1; max-width:340px">
+        <summary>⚲ {{ filter_label }}</summary>
+        <form method="get">
+            <p class="muted small" style="margin:0 0 6px">{{ t.blitz_filter_hint }}</p>
+            {% for uuid, name, on in own_topics %}
+                <label class="check-row"><input type="checkbox" name="t" value="{{ uuid }}"{% if on %} checked{% endif %}> {{ name }}</label>
+            {% endfor %}
+            {% for uuid, name, on in added_topics %}
+                <label class="check-row"><input type="checkbox" name="t" value="{{ uuid }}"{% if on %} checked{% endif %}> {{ name }}</label>
+            {% endfor %}
+            <label class="check-row"><input type="checkbox" name="t" value="none"{% if none_selected %} checked{% endif %}> {{ t.lib_no_topic }}</label>
+            <div class="btn-row" style="margin:12px 0">
+                <a class="btn ghost inline" href="{% url 'web:blitz' %}">{{ t.blitz_all_topics }}</a>
+                <button class="btn inline" type="submit">{{ t.blitz_show }}</button>
+            </div>
+        </form>
+    </details>
+    <span class="muted small">{{ left }}</span>
+</div>
+
+{% if card %}
+<div class="card-area">
+    <div class="flashcard" id="flashcard">
+        <span class="stamp right">{{ t.blitz_right|upper }}</span>
+        <span class="stamp wrong">{{ t.blitz_wrong|upper }}</span>
+        <div class="face front">{{ t.blitz_question }}</div>
+        <div class="face back">{{ t.blitz_answer }}</div>
+        <div class="text front">{{ card.question }}</div>
+        <div class="text back">{{ card.answer }}</div>
+        <div class="hint">{{ t.blitz_flip }}</div>
+    </div>
+    <div class="grade">
+        <form method="post" action="{% url 'web:blitz_answer' %}" id="wrong-form">{% csrf_token %}
+            <input type="hidden" name="card" value="{{ card.uuid }}"><input type="hidden" name="correct" value="0">
+            {% for v in values %}<input type="hidden" name="t" value="{{ v }}">{% endfor %}
+            <button class="btn ghost" type="submit">{{ t.blitz_wrong }}</button>
+        </form>
+        <form method="post" action="{% url 'web:blitz_answer' %}" id="right-form">{% csrf_token %}
+            <input type="hidden" name="card" value="{{ card.uuid }}"><input type="hidden" name="correct" value="1">
+            {% for v in values %}<input type="hidden" name="t" value="{{ v }}">{% endfor %}
+            <button class="btn" type="submit">{{ t.blitz_right }}</button>
+        </form>
+    </div>
+    <div class="keys">{{ t.blitz_keys }}</div>
+</div>
+{% else %}
+<div class="result"><div class="big">0</div><div class="caption">{{ t.blitz_empty }}</div></div>
+{% endif %}
+
+<div class="study-bottom">
+    {% if card %}
+    <form method="post" action="{% url 'web:blitz_remove' %}">{% csrf_token %}
+        <input type="hidden" name="card" value="{{ card.uuid }}">
+        {% for v in values %}<input type="hidden" name="t" value="{{ v }}">{% endfor %}
+        <button type="submit">🗑 {{ t.blitz_remove }}</button>
+    </form>
+    {% else %}<span></span>{% endif %}
+    {% if can_undo %}
+    <form method="post" action="{% url 'web:blitz_undo' %}">{% csrf_token %}
+        {% for v in values %}<input type="hidden" name="t" value="{{ v }}">{% endfor %}
+        <button type="submit">↶ {{ t.blitz_undo }}</button>
+    </form>
+    {% endif %}
+    <a href="{{ add_url }}">+ {{ t.blitz_add }}</a>
+</div>
+{% endblock %}

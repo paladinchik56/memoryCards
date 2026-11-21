@@ -1,0 +1,48 @@
+{% extends 'base.html' %}
+{% block title %}{{ t.tab_profile }}{% endblock %}
+{% block content %}
+<div class="profile-head">
+    <div class="avatar">{{ nickname|first|upper }}</div>
+    <div style="flex:1"><div style="font-size:22px;font-weight:700">{{ nickname }}</div><div class="muted small">{{ user.email }}</div></div>
+</div>
+<div class="stats">
+    <div><b>{{ total }}</b><span>{{ t.profile_in_blitz }}</span></div>
+    <div><b>{{ learned }}</b><span>{{ t.profile_learned }}</span></div>
+    <div><b>{{ streak }}</b><span>{{ t.profile_streak }}</span></div>
+</div>
+
+<div class="section">{{ t.profile_study }}</div>
+<div class="list">
+    <a class="row" href="{% url 'web:algorithm' %}"><div class="main title">{{ t.profile_algorithm }}</div><span class="chev">›</span></a>
+    <form method="post" action="{% url 'web:test_mode' %}" class="row">{% csrf_token %}
+        <div class="main title">{{ t.profile_test_mode }}</div>
+        <button class="chip{% if test_mode %} on{% endif %}" type="submit">{% if test_mode %}{{ t.on }}{% else %}{{ t.off }}{% endif %}</button>
+    </form>
+</div>
+
+<div class="section">{{ t.profile_app }}</div>
+<div class="list">
+    <form method="post" action="{% url 'web:language' %}" class="row">{% csrf_token %}
+        <input type="hidden" name="next" value="{{ request.path }}">
+        <div class="main title">{{ t.profile_language }}</div>
+        <select class="select" name="lang" data-autosubmit>
+            {% for code, name in languages %}<option value="{{ code }}"{% if code == lang %} selected{% endif %}>{{ name }}</option>{% endfor %}
+        </select>
+    </form>
+    <div class="row">
+        <div class="main title">{{ t.profile_appearance }}</div>
+        <select class="select" data-appearance>
+            <option value="system">{{ t.appearance_system }}</option>
+            <option value="light">{{ t.appearance_light }}</option>
+            <option value="dark">{{ t.appearance_dark }}</option>
+        </select>
+    </div>
+</div>
+
+<div class="section">{{ t.profile_account }}</div>
+<div class="list">
+    <a class="row" href="{% url 'web:account' %}"><div class="main title">{{ t.profile_nick_password }}</div><span class="chev">›</span></a>
+    <a class="row" href="{% url 'web:export' %}"><div class="main title">{{ t.profile_export }}</div><span class="val">CSV</span></a>
+    <form method="post" action="{% url 'logout' %}">{% csrf_token %}<button class="text-btn" type="submit" style="text-align:left">{{ t.profile_logout }}</button></form>
+</div>
+{% endblock %}

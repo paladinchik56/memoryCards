@@ -1,0 +1,67 @@
+{% extends 'base.html' %}
+{% load web_extras %}
+{% block title %}{% if collection %}{{ collection.name }}{% else %}{{ t.lib_no_topic }}{% endif %}{% endblock %}
+{% block content %}
+<div class="top">
+    <span class="side"><a class="icon-link" href="{% if selecting %}?{% elif is_owner %}{% url 'web:mine' %}{% else %}javascript:history.back(){% endif %}">{% if selecting %}✕{% else %}‹{% endif %}</a></span>
+    <span class="title">{% if selecting %}{{ t.lib_pick_cards }}{% endif %}</span>
+    <span class="side right">
+        {% if selecting %}<button type="button" class="strong-link" data-select-all=".pick">{{ t.lib_all }}</button>
+        {% elif is_owner and collection %}<a class="strong-link" href="{% url 'web:topic_edit' collection.share_token %}">{{ t.lib_edit }}</a>{% endif %}
+    </span>
+</div>
+
+<h1>{% if collection %}{{ collection.name }}{% else %}{{ t.lib_no_topic }}{% endif %}</h1>
+{% if collection.description %}<p style="margin:6px 0 0;opacity:.8">{{ collection.description }}</p>{% endif %}
+{% if collection.tags %}<div class="tags">{% for tag in collection.tags %}<span class="tag">{{ tag }}</span>{% endfor %}</div>{% endif %}
+<p class="muted small" style="margin-top:10px">
+    {% with n=cards|length %}{{ t.lib_cards_n|fill:n }}{% endwith %}
+    {% if collection %}{% with key="topic_"|add:collection.visibility %} · {{ t|tt:key }}{% endwith %}{% endif %}
+    {% if collection and not is_owner %} · <a href="{% url 'web:author' owner_name %}">{{ t.lib_by|fill:owner_name }}</a>{% endif %}
+</p>
+{% if is_owner and collection and collection.visibility != 'private' and not selecting %}
+<div class="share"><code id="share-url">{{ share_url }}</code><button type="button" class="chip" data-copy="#share-url">{{ t.lib_copy_link }}</button></div>
+{% endif %}
+
+{% if not selecting %}
+<div class="btn-row" style="margin-top:16px">
+    {% if collection and not is_owner %}
+    <form method="post" action="{% url 'web:subscribe' collection.share_token %}">{% csrf_token %}
+        <button class="btn{% if is_added %} ghost{% endif %}" type="submit">{% if is_added %}{{ t.lib_remove_topic }}{% else %}{{ t.lib_add_topic }}{% endif %}</button>
+    </form>
+    {% endif %}
+    {% if cards %}<a class="btn ghost" href="?select=1">{% if is_owner %}{{ t.lib_edit_deck }}{% else %}{{ t.lib_select }}{% endif %}</a>{% endif %}
+</div>
+{% endif %}
+
+{% if cards %}
+<form method="post" action="{% url 'web:topic_action' %}" id="deck">{% csrf_token %}
+    <input type="hidden" name="source" value="{{ source }}">
+    <table class="qa">
+        <tr>{% if selecting %}<th class="check"></th>{% endif %}<th>{{ t.col_question }}</th><th>{{ t.col_answer }}</th></tr>
+        {% for c, in_blitz in cards %}
+        <tr{% if not selecting and is_owner %} class="link" data-href="{% url 'web:card' c.uuid %}"{% endif %}>
+            {% if selecting %}<td class="check"><input type="checkbox" class="pick" name="cards" value="{{ c.uuid }}"></td>{% endif %}
+            <td>{{ c.question }}{% if in_blitz %}<div class="dot">● {{ t.lib_in_blitz }}</div>{% endif %}</td>
+            <td class="a">{{ c.answer }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+    {% if selecting %}
+    <div class="actionbar">
+        <button class="btn inline" name="action" value="to_blitz">⚡ {{ t.lib_to_blitz }}</button>
+        <select class="select" name="target">
+            {% if is_owner and collection %}<option value="none">{{ t.lib_no_topic }}</option>{% endif %}
+            {% for o in own_topics %}<option value="{{ o.uuid }}">{{ o.name }}</option>{% endfor %}
+        </select>
+        {% if own_topics %}<button class="btn ghost inline" name="action" value="copy">{{ t.lib_copy }}</button>{% endif %}
+        {% if is_owner %}
+            <button class="btn ghost inline" name="action" value="move">{{ t.lib_move }}</button>
+            {% if collection %}<button class="btn ghost inline" name="action" value="from_deck">{{ t.lib_from_deck }}</button>
+            {% else %}<button class="btn ghost inline" name="action" value="delete" data-confirm="{{ t.lib_delete_confirm }}">{{ t.lib_delete }}</button>{% endif %}
+        {% endif %}
+    </div>
+    {% endif %}
+</form>
+{% else %}<p class="empty">{{ t.lib_empty_topic }}</p>{% endif %}
+{% endblock %}
