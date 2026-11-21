@@ -1,0 +1,9 @@
+.venv
+.git
+.idea
+mobile
+my content
+description
+docs
+*.sqlite3
+__pycache__

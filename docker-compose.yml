@@ -1,0 +1,28 @@
+# docker compose up                    — website + API on http://<your IP>:8000
+# docker compose --profile mobile up   — plus the Expo dev server for Expo Go
+services:
+  web:
+    build: .
+    user: "${UID:-1000}:${GID:-1000}"
+    ports:
+      - "${WEB_PORT:-8000}:8000"
+    volumes:
+      - .:/app            # live code + db.sqlite3 stay in the project folder
+    environment:
+      DJANGO_ALLOWED_HOSTS: "${DJANGO_ALLOWED_HOSTS:-localhost,127.0.0.1,192.168.0.65}"
+      HOME: /tmp
+
+  mobile:
+    profiles: ["mobile"]
+    image: node:24-slim
+    user: "${UID:-1000}:${GID:-1000}"
+    working_dir: /app/mobile
+    network_mode: host   # the phone must reach Metro on this computer's LAN address
+    tty: true            # so the QR code shows up in `docker compose logs`
+    volumes:
+      - ./mobile:/app/mobile
+      - ./cards/scheduler_vectors.json:/app/cards/scheduler_vectors.json:ro
+    environment:
+      HOME: /tmp
+      REACT_NATIVE_PACKAGER_HOSTNAME: "${LAN_IP:-192.168.0.65}"
+    command: sh -c "npm install --no-audit --no-fund && npx expo start --lan --port ${EXPO_PORT:-8081}"

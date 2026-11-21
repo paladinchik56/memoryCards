@@ -49,6 +49,19 @@ Open `http://127.0.0.1:8000/`, register an account (confirmation codes are sent 
 
 In production, set a `DJANGO_SECRET_KEY` environment variable (the repo only ships a `django-insecure-...` fallback for local dev).
 
+### With Docker
+
+Only Docker and Docker Compose are needed — no local Python or Node.
+
+```bash
+docker compose up                    # website + API on http://localhost:8000
+docker compose --profile mobile up   # + Expo dev server for the phone (QR code in the logs)
+```
+
+The project folder (code and `db.sqlite3`) is mounted, so edits apply immediately.
+Overrides: `WEB_PORT`, `EXPO_PORT`, `LAN_IP` (your computer's LAN address for the phone).
+Run management commands with `docker compose exec web python manage.py <command>`.
+
 Run the test suite with:
 
 ```bash

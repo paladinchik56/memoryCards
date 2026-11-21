@@ -66,6 +66,18 @@ python manage.py runserver
 На боевом сервере задайте переменную окружения `DJANGO_SECRET_KEY` (в репозитории только
 небезопасный ключ для локальной разработки).
 
+### Через Docker
+
+Нужны только Docker и Docker Compose — Python и Node ставить не надо.
+
+```bash
+docker compose up                    # сайт и API: http://localhost:8000
+docker compose --profile mobile up   # + Expo для телефона (QR-код в логах)
+```
+
+Код и база (`db.sqlite3`) подключены из папки проекта, правки видны сразу. Подробнее — в
+[`description/run-on-android.md`](description/run-on-android.md) (шаг 1, вариант А).
+
 Тесты:
 
 ```bash
@@ -78,19 +90,21 @@ python manage.py test
 из Google Play / App Store), отдельный `.apk` будет позже.
 
 1. Установите на телефон **Expo Go**. Телефон и компьютер должны быть в одной Wi-Fi сети.
-2. На компьютере запустите сервер так, чтобы телефон мог к нему подключиться
-   (вместо `192.168.0.65` — IP вашего компьютера, его показывает `hostname -I`):
+2. На компьютере запустите сервер и Expo одной командой (вместо `192.168.0.65` — IP компьютера,
+   его показывает `hostname -I`):
+   ```bash
+   LAN_IP=192.168.0.65 DJANGO_ALLOWED_HOSTS=localhost,192.168.0.65 docker compose --profile mobile up
+   ```
+   Без Docker — два терминала:
    ```bash
    DJANGO_ALLOWED_HOSTS="192.168.0.65,localhost" python manage.py runserver 0.0.0.0:8000
+   cd mobile && npm install && npx expo start
    ```
-3. Во втором терминале запустите приложение:
-   ```bash
-   cd mobile
-   npm install        # только первый раз
-   npx expo start
-   ```
-4. Откройте Expo Go и отсканируйте QR-код из терминала.
-5. На экране входа адрес сервера уже подставлен. Войдите (например, тестовым аккаунтом `admin`).
+3. Откройте Expo Go и отсканируйте QR-код из логов (терминала).
+4. На экране входа адрес сервера уже подставлен. Войдите (например, тестовым аккаунтом `admin`)
+   или продолжите без аккаунта.
+
+Подробная инструкция и решение проблем — [`description/run-on-android.md`](description/run-on-android.md).
 
 Тему «Электротехника» (30 карточек) можно создать на любом сервере командой
 `python manage.py seed_electrical` (по умолчанию владелец — пользователь `admin`).
