@@ -11,6 +11,16 @@ services:
     environment:
       DJANGO_ALLOWED_HOSTS: "${DJANGO_ALLOWED_HOSTS:-localhost,127.0.0.1,192.168.0.65}"
       HOME: /tmp
+      WEB_PORT: "${WEB_PORT:-8000}"
+      LAN_IP: "${LAN_IP:-192.168.0.65}"
+    # runserver prints http://0.0.0.0:8000/, which is not an address to open: show the real ones.
+    command: >-
+      sh -c 'python manage.py migrate --noinput &&
+      echo "" &&
+      echo "  Computer: http://localhost:$${WEB_PORT}/" &&
+      echo "  Phone:    http://$${LAN_IP}:$${WEB_PORT}/" &&
+      echo "" &&
+      exec python manage.py runserver 0.0.0.0:8000'
 
   mobile:
     profiles: ["mobile"]
