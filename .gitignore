@@ -3,3 +3,6 @@ __pycache__/
 *.pyc
 db.sqlite3
 .idea/
+
+# Local IDE (WebStorm) MCP server config
+.mcp.json
