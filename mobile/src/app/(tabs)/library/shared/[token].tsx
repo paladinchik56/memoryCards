@@ -25,7 +25,7 @@ export default function Shared() {
     return (
       <Screen>
         <TopBar left="chevron-left" onLeft={() => router.back()} />
-        {failed ? <Muted style={{ textAlign: 'center', marginTop: 40 }}>{t('lib.offline')}</Muted> : <ActivityIndicator style={{ marginTop: 40 }} />}
+        {!api ? <Muted style={{ textAlign: 'center', marginTop: 40 }}>{t('guest.needAccount')}</Muted> : failed ? <Muted style={{ textAlign: 'center', marginTop: 40 }}>{t('lib.offline')}</Muted> : <ActivityIndicator style={{ marginTop: 40 }} />}
       </Screen>
     );
   }

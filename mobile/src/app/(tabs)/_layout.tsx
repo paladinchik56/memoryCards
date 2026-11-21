@@ -7,9 +7,9 @@ import { useSettings } from '@/lib/settings';
 
 export default function TabsLayout() {
   const { colors, t } = useSettings();
-  const { ready, auth } = useSession();
+  const { ready, auth, guest } = useSession();
   if (!ready) return <View style={{ flex: 1, backgroundColor: colors.bg }} />;
-  if (!auth) return <Redirect href="/login" />;
+  if (!auth && !guest) return <Redirect href="/login" />;
 
   return (
     <Tabs

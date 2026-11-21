@@ -39,7 +39,7 @@ export function ForeignTopic({ topic, onChanged }: { topic: ForeignTopicData; on
   useEffect(() => { void collections(db).then(setOwn); }, [db]);
 
   const toggleAdded = async () => {
-    if (!api) return;
+    if (!api) return Alert.alert(t('guest.needAccount'));
     setBusy(true);
     try {
       const res = await api.subscribe(topic.share_token, !isAdded);
@@ -54,7 +54,7 @@ export function ForeignTopic({ topic, onChanged }: { topic: ForeignTopicData; on
   };
 
   const copy = async (uuids: string[], target: string) => {
-    if (!api) return;
+    if (!api) return Alert.alert(t('guest.needAccount'));
     try {
       const res = await api.copy(topic.share_token, uuids, target);
       await syncNow();

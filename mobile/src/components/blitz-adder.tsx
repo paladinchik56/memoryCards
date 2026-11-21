@@ -44,7 +44,7 @@ export function useBlitzAdder(onDone?: () => void) {
 
   /** Cards of someone else's topic (needs the server). */
   const addForeign = async (shareToken: string, uuids: string[]) => {
-    if (!api) return;
+    if (!api) return Alert.alert(t('guest.needAccount'));
     try {
       const topic = await api.shared(shareToken);
       const picked = topic.cards.filter((c) => uuids.includes(c.uuid));

@@ -18,13 +18,14 @@ export default function Profile() {
   const db = useSQLiteContext();
   const { colors, t, lang, setLang, appearance, setAppearance } = useSettings();
   const { auth, syncing, syncError, lastSync, revision, syncNow, signOut } = useSession();
+  const guest = !auth;
   const [numbers, setNumbers] = useState({ total: 0, learned: 0, streak: 0 });
   const [picker, setPicker] = useState<Picker>(null);
   const [reminder, setReminderState] = useState<string | null>(getReminder);
 
   useFocusEffect(useCallback(() => { void stats(db, MAX_STAGE).then(setNumbers); }, [db, revision]));
 
-  const syncText = syncing
+  const syncText = guest ? t('guest.hint') : syncing
     ? t('profile.syncing')
     : syncError
       ? t('profile.syncError')
@@ -48,7 +49,7 @@ export default function Profile() {
     }
   };
 
-  const logout = () => Alert.alert(t('profile.logout'), t('profile.logoutConfirm'), [
+  const logout = () => Alert.alert(t('profile.logout'), t('profile.logoutConfirm2'), [
     { text: t('common.cancel'), style: 'cancel' },
     { text: t('profile.logout'), style: 'destructive', onPress: () => { void setReminder(null, { title: '', body: '' }); void signOut(); } },
   ]);
@@ -65,13 +66,15 @@ export default function Profile() {
       <ScrollView contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 40 }}>
         <View style={st.head}>
           <View style={[st.avatar, { backgroundColor: colors.soft }]}>
-            <Text style={[st.initial, { color: colors.muted }]}>{(auth?.nickname ?? '?').slice(0, 1).toUpperCase()}</Text>
+            <Text style={[st.initial, { color: colors.muted }]}>{(auth?.nickname ?? '·').slice(0, 1).toUpperCase()}</Text>
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={[st.name, { color: colors.fg }]} numberOfLines={1}>{auth?.nickname}</Text>
+            <Text style={[st.name, { color: colors.fg }]} numberOfLines={1}>{auth?.nickname ?? t('guest.name')}</Text>
             <Muted style={{ fontSize: 13, marginTop: 2 }}>{syncText}</Muted>
           </View>
-          <Chip title={t('profile.refresh')} onPress={() => void syncNow()} />
+          {guest
+            ? <Chip title={t('guest.login')} active onPress={() => router.push('/login')} />
+            : <Chip title={t('profile.refresh')} onPress={() => void syncNow()} />}
         </View>
 
         <View style={[st.stats, { borderColor: colors.line }]}>
@@ -89,9 +92,9 @@ export default function Profile() {
         <Row title={t('profile.appearance')} value={t(`appearance.${appearance}`)} onPress={() => setPicker('appearance')} />
 
         <Section title={t('profile.account')} />
-        <Row title={t('profile.nickPassword')} onPress={() => router.push('/account')} />
+        {guest ? null : <Row title={t('profile.nickPassword')} onPress={() => router.push('/account')} />}
         <Row title={t('profile.export')} value="CSV" onPress={() => void exportCards()} />
-        <Row title={t('profile.logout')} onPress={logout} chevron={false} />
+        {guest ? null : <Row title={t('profile.logout')} onPress={logout} chevron={false} />}
       </ScrollView>
 
       <ChoiceSheet<Language>

@@ -36,7 +36,7 @@ export default function Browse() {
           autoCorrect={false} placeholderTextColor={colors.muted}
         />
       </View>
-      {failed ? <Muted style={st.msg}>{t('lib.offline')}</Muted> : !topics ? <ActivityIndicator style={{ marginTop: 40 }} /> : (
+      {!api ? <Muted style={st.msg}>{t('guest.needAccount')}</Muted> : failed ? <Muted style={st.msg}>{t('lib.offline')}</Muted> : !topics ? <ActivityIndicator style={{ marginTop: 40 }} /> : (
         <FlatList
           data={shown}
           keyExtractor={(tp) => tp.share_token}

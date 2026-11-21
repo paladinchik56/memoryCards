@@ -8,7 +8,8 @@
     "userInterfaceStyle": "automatic",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.paladinchik.cards"
+      "bundleIdentifier": "com.paladinchik.cards",
+      "infoPlist": {}
     },
     "android": {
       "adaptiveIcon": {
@@ -47,7 +48,15 @@
       "typedRoutes": false
     },
     "extra": {
-      "defaultServer": "http://192.168.0.65:8000"
+      "defaultServer": "http://192.168.0.65:8000",
+      "router": {
+        "asyncRoutes": {
+          "web": true
+        }
+      },
+      "eas": {
+        "projectId": "bdf53b86-bfa7-4a5f-af42-c5a9cfd5782d"
+      }
     }
   }
 }

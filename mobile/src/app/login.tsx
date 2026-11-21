@@ -1,11 +1,11 @@
 import Constants from 'expo-constants';
 import { Redirect, router } from 'expo-router';
 import { useState } from 'react';
-import { KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { Muted, Pill, Screen, Title } from '@/components/ui';
 import { ApiError } from '@/lib/api';
-import { useSession } from '@/lib/session';
+import { OtherAccountData, useSession } from '@/lib/session';
 import { useSettings } from '@/lib/settings';
 
 /** In development the Django server usually runs on the same computer as Metro. */
@@ -17,7 +17,7 @@ function guessServer(): string {
 
 export default function Login() {
   const { colors, t } = useSettings();
-  const { auth, signIn } = useSession();
+  const { auth, signIn, continueAsGuest } = useSession();
   const [server, setServer] = useState(guessServer);
   const [login, setLogin] = useState('');
   const [password, setPassword] = useState('');
@@ -26,17 +26,29 @@ export default function Login() {
 
   if (auth) return <Redirect href="/" />;
 
-  const submit = async () => {
+  const submit = async (replace = false) => {
     setBusy(true);
     setError(null);
     try {
-      await signIn(server.trim(), login.trim(), password);
+      await signIn(server.trim(), login.trim(), password, replace);
       router.replace('/');
     } catch (e) {
-      setError(e instanceof ApiError && e.status === 400 ? t('login.failed') : t('login.network'));
+      if (e instanceof OtherAccountData) {
+        Alert.alert(t('login.title'), t('login.otherAccount', { owner: e.owner }), [
+          { text: t('common.cancel'), style: 'cancel' },
+          { text: t('login.replace'), style: 'destructive', onPress: () => void submit(true) },
+        ]);
+      } else {
+        setError(e instanceof ApiError && e.status === 400 ? t('login.failed') : t('login.network'));
+      }
     } finally {
       setBusy(false);
     }
+  };
+
+  const guest = () => {
+    continueAsGuest();
+    router.replace('/');
   };
 
   const input = [st.input, { color: colors.fg, borderColor: colors.line }];
@@ -50,10 +62,14 @@ export default function Login() {
           <Muted style={st.label}>{t('login.login')}</Muted>
           <TextInput style={input} value={login} onChangeText={setLogin} autoCapitalize="none" autoCorrect={false} />
           <Muted style={st.label}>{t('login.password')}</Muted>
-          <TextInput style={input} value={password} onChangeText={setPassword} secureTextEntry onSubmitEditing={submit} />
+          <TextInput style={input} value={password} onChangeText={setPassword} secureTextEntry onSubmitEditing={() => void submit()} />
         </View>
         {error ? <Text style={[st.error, { color: colors.fg }]}>{error}</Text> : null}
-        <Pill title={t('login.submit')} onPress={submit} loading={busy} disabled={!login || !password} style={{ marginTop: 28 }} />
+        <Pill title={t('login.submit')} onPress={() => void submit()} loading={busy} disabled={!login || !password} style={{ marginTop: 28 }} />
+        <Pressable onPress={guest} style={{ alignItems: 'center', paddingTop: 22 }} hitSlop={8}>
+          <Text style={{ color: colors.fg, fontSize: 15, fontWeight: '500' }}>{t('login.guest')}</Text>
+          <Muted style={{ fontSize: 13, textAlign: 'center', marginTop: 4 }}>{t('login.guestHint')}</Muted>
+        </Pressable>
       </KeyboardAvoidingView>
     </Screen>
   );

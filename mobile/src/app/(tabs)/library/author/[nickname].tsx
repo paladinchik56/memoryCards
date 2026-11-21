@@ -20,7 +20,7 @@ export default function Author() {
   return (
     <Screen>
       <TopBar left="chevron-left" onLeft={() => router.back()} />
-      {failed ? <Muted style={{ textAlign: 'center', marginTop: 40 }}>{t('lib.offline')}</Muted> : !data ? <ActivityIndicator style={{ marginTop: 40 }} /> : (
+      {!api ? <Muted style={{ textAlign: 'center', marginTop: 40 }}>{t('guest.needAccount')}</Muted> : failed ? <Muted style={{ textAlign: 'center', marginTop: 40 }}>{t('lib.offline')}</Muted> : !data ? <ActivityIndicator style={{ marginTop: 40 }} /> : (
         <FlatList
           data={data.topics}
           keyExtractor={(tp) => tp.share_token}
